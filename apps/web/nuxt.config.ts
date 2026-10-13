@@ -142,6 +142,13 @@ export default defineNuxtConfig({
     "nuxt-security",
   ],
 
+  // @nuxt/scripts downloads the third-party scripts its own components wrap (Gravatar, Calendly, ...) while the app is built,
+  // including ones this app never uses. A build with no route to those hosts (or a slow emulated one, as in the multi-platform
+  // release build) must not fail because of them: fall back to the script's own address at run time instead.
+  scripts: {
+    assets: { fallbackOnSrcOnBundleFail: true },
+  },
+
   // @nuxtjs/seo builds canonical URLs, og:url, the sitemap and robots.txt from
   // the site URL. Deliberately not set here: a build-time value is baked into the
   // image, so every site on a multisite install would claim the same URL (and an
