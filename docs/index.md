@@ -12,6 +12,12 @@ hero:
     - theme: alt
       text: How it is built
       link: /architecture
+    - theme: alt
+      text: Example sites
+      link: /guide/examples
+    - theme: alt
+      text: GitHub
+      link: https://github.com/polysites/polysite
 
 features:
   - title: Multisite by design

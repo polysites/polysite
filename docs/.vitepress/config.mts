@@ -4,14 +4,46 @@ import { defineConfig } from "vitepress";
 // asset needs that prefix; DOCS_BASE=/ builds for local preview or a custom domain.
 const base = process.env.DOCS_BASE ?? "/polysite/";
 
+// Absolute address of the published site: link previews (Facebook, LinkedIn, Slack, X) need absolute URLs for the page and the image.
+const siteUrl = "https://polysites.github.io/polysite/";
+const siteDescription = "One cockpit for every site you run: a multisite, static-first CMS.";
+
 export default defineConfig({
   title: "Polysite",
-  description: "One cockpit for every site you run: a multisite, static-first CMS.",
+  description: siteDescription,
   base,
   lang: "en",
   cleanUrls: true,
   lastUpdated: true,
-  head: [["link", { rel: "icon", href: `${base}favicon.svg`, type: "image/svg+xml" }]],
+  head: [
+    ["link", { rel: "icon", href: `${base}favicon.svg`, type: "image/svg+xml" }],
+    ["meta", { property: "og:type", content: "website" }],
+    ["meta", { property: "og:site_name", content: "Polysite" }],
+    ["meta", { property: "og:locale", content: "en_US" }],
+    ["meta", { property: "og:image", content: `${siteUrl}og-image.png` }],
+    ["meta", { property: "og:image:width", content: "1200" }],
+    ["meta", { property: "og:image:height", content: "630" }],
+    ["meta", { property: "og:image:alt", content: "Polysite: one cockpit for every site you run, with three example sites" }],
+    ["meta", { name: "twitter:card", content: "summary_large_image" }],
+    ["meta", { name: "twitter:image", content: `${siteUrl}og-image.png` }],
+  ],
+
+  // Per-page share tags: title, description and the page's own address.
+  transformHead({ pageData }) {
+    const path = pageData.relativePath.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "");
+    const url = `${siteUrl}${path}`;
+    const title =
+      pageData.frontmatter?.layout === "home" ? "Polysite: the multisite CMS for organisations" : `${pageData.title} | Polysite`;
+    const description = pageData.description || siteDescription;
+    return [
+      ["link", { rel: "canonical", href: url }],
+      ["meta", { property: "og:url", content: url }],
+      ["meta", { property: "og:title", content: title }],
+      ["meta", { property: "og:description", content: description }],
+      ["meta", { name: "twitter:title", content: title }],
+      ["meta", { name: "twitter:description", content: description }],
+    ];
+  },
 
   // The architecture and brand guides keep their repo-root file names (the
   // README links to them) but get tidy URLs on the site.
@@ -28,6 +60,7 @@ export default defineConfig({
       { text: "Architecture", link: "/architecture" },
       { text: "Plugins", link: "/guide/plugins" },
       { text: "Themes", link: "/guide/themes" },
+      { text: "Examples", link: "/guide/examples" },
     ],
     sidebar: [
       {
@@ -38,6 +71,7 @@ export default defineConfig({
           { text: "What Polysite does", link: "/guide/features" },
           { text: "Plugins", link: "/guide/plugins" },
           { text: "Themes", link: "/guide/themes" },
+          { text: "Example sites", link: "/guide/examples" },
           { text: "Drafts and publishing", link: "/guide/publishing" },
           { text: "Languages", link: "/guide/languages" },
           { text: "Search", link: "/guide/search" },
@@ -77,6 +111,7 @@ export default defineConfig({
         ],
       },
     ],
+    socialLinks: [{ icon: "github", link: "https://github.com/polysites/polysite", ariaLabel: "Polysite on GitHub" }],
     outline: { level: [2, 3] },
     search: { provider: "local" },
     footer: {
