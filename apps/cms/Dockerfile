@@ -9,7 +9,7 @@ FROM scratch AS plugins
 # apps/web/Dockerfile: Sites.ts's theme auto-discovery needs to see themes/
 # to scan it. Before this, cms had NO filesystem access to theme
 # files at all -- a real, deliberate widening, not the default.
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 # No telemetry: Next.js collects anonymous usage data unless told not to, in a build or a dev server as much as at run time.
 # (Payload's own usage reports are switched off in payload.config.ts.) npm's "new version available" check also calls the registry
 # every time a script runs, so it is off.
@@ -58,7 +58,7 @@ RUN for i in 1 2 3; do npx payload generate:importmap; [ -s "src/app/(payload)/a
 RUN for i in 1 2 3; do npx payload generate:types; [ -s src/payload-types.ts ] && break; echo "the types were not written (attempt $i)"; sleep 3; done; [ -s src/payload-types.ts ] || { echo "the types could not be generated"; exit 1; }
 RUN npm run build
 
-FROM node:24-alpine AS run
+FROM node:26-alpine AS run
 # No telemetry: Next.js collects anonymous usage data unless told not to, in a build or a dev server as much as at run time.
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
@@ -109,7 +109,7 @@ CMD ["sh", "-c", "npx payload migrate && npm start"]
 # in at runtime, so edits hot-reload without an image rebuild, and Payload
 # auto-pushes schema changes straight to the dev DB instead of requiring a
 # committed migration to boot.
-FROM node:24-alpine AS dev
+FROM node:26-alpine AS dev
 # No telemetry: Next.js collects anonymous usage data unless told not to, in a build or a dev server as much as at run time.
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
