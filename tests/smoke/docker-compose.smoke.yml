@@ -1,0 +1,7 @@
+# Overrides for the smoke test (tests/smoke/run.sh): nothing is published on the host, because the test runs on the
+# compose network and reaches Caddy by name, so it can't collide with a stack you already have running.
+services:
+  caddy:
+    ports: !reset []
+  db:
+    ports: !reset []

@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+/* Tailwind v4's zero-config automatic source detection skips nested git
+ * repositories the same way it skips node_modules -- and every theme under
+ * themes/ is exactly that (its own independent .git, intentionally excluded
+ * from this repo's git tracking; see each theme's README). Confirmed for
+ * real: utility classes used ONLY in a theme layer (w-80, ml-auto, z-40,
+ * arbitrary bg-[var(...)] values) generated no CSS at all, while classes
+ * that happened to also be used elsewhere in the app "worked" by pure
+ * coincidence. This glob brings every theme layer back into the scan --
+ * not one client's repo hardcoded by name, since new themes are dropped
+ * into themes/ without touching this app's own code. */
+@source "../../../../themes/polysite-theme-*";
+
+/* The layers actually found at start, by name (written by nuxt.config.ts): the globs above and below do not reach nested
+ * git repositories reliably. */
+@import "./layer-sources.css";
+
+/* Per-site heading font (Sites.headingFontFamily -> --font-heading, set
+ * inline on .site-shell by the theme layout). Body font is applied directly
+ * via --font-body on .site-shell itself, since font-family inherits to every
+ * descendant by default -- headings need their own rule because they should
+ * use a different family than the surrounding body text. */
+h1, h2, h3, h4 {
+  font-family: var(--font-heading, inherit);
+}
+
+/* A plugin's web layer is a nested git repository too, so its classes need the same explicit scan. Matches nothing
+ * when no plugin has a web part. */
+@source "../../../../plugins/*/web";
+
+/* The core's fallback form blocks wrap their form in .poly-form-defaults. PolysiteFormFields carries class names and no
+ * look of its own (a theme styles it from its own block), so this gives the plain fallback a neutral, readable
+ * form. A theme's own form block doesn't use the wrapper, so none of this applies to it. */
+.poly-form-defaults .poly-form { display: flex; flex-wrap: wrap; gap: 1rem; }
+.poly-form-defaults .poly-field { display: flex; flex-direction: column; gap: 0.35rem; flex: 1 1 var(--poly-field-width, 100%); min-width: 12rem; }
+.poly-form-defaults .poly-label { font-size: 0.875rem; font-weight: 600; color: #262626; }
+.poly-form-defaults .poly-required { color: #b91c1c; }
+.poly-form-defaults input:not([type="checkbox"]):not([type="radio"]),
+.poly-form-defaults select,
+.poly-form-defaults textarea { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #d4d4d4; border-radius: 0.5rem; background: #fff; font: inherit; color: #171717; }
+.poly-form-defaults input:focus-visible,
+.poly-form-defaults select:focus-visible,
+.poly-form-defaults textarea:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 1px; }
+.poly-form-defaults [aria-invalid="true"] { border-color: #b91c1c; }
+.poly-form-defaults .poly-check { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem; color: #404040; }
+.poly-form-defaults .poly-radios { display: flex; flex-direction: column; gap: 0.4rem; }
+.poly-form-defaults .poly-error { width: 100%; font-size: 0.85rem; color: #b91c1c; }
+.poly-form-defaults .poly-submit { padding: 0.65rem 1.5rem; border: 0; border-radius: 9999px; background: var(--brand-primary); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.poly-form-defaults .poly-submit:hover { opacity: 0.9; }
+.poly-form-defaults .poly-submit:disabled { opacity: 0.6; cursor: default; }
+.poly-form-defaults .poly-confirmation { padding: 1rem 1.25rem; border-radius: 0.5rem; background: #f0fdf4; color: #14532d; }

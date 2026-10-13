@@ -1,0 +1,68 @@
+# Fast local iteration on top of docker-compose.yml: hot-reload dev servers
+# against bind-mounted source, with Payload's Postgres adapter auto-pushing
+# schema changes to the dev DB (no committed migration needed to boot).
+#
+# This is NOT production parity. Before committing a schema change, also
+# verify it against docker-compose.yml alone (real build + real migration),
+# and generate the actual migration file (scripts/pluginMigrations.sh, see
+# CONTRIBUTING.md "Schema changes") from a real terminal -- the interactive
+# rename/create prompt needs a genuine TTY and hangs when driven through a
+# non-interactive script or CI-style stdin pipe.
+#
+# Run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+services:
+  cms:
+    build:
+      target: dev
+    volumes:
+      - ./apps/cms:/repo/apps/cms
+      # Read-only: the CMS only scans themes/ for Sites.theme's dropdown,
+      # never writes to it. Whole directory, not one mount per theme -- a
+      # new theme folder appears here automatically on container restart,
+      # no compose edit needed.
+      - ${POLYSITE_THEMES_DIR:-./themes}:/repo/themes:ro
+      # Read-write, unlike themes/ above: a plugin's own node_modules gets
+      # installed into this bind mount at container start (see the cms
+      # Dockerfile's dev-stage CMD), and plugins are actively developed
+      # here, not just referenced.
+      - ${POLYSITE_PLUGINS_DIR:-./plugins}:/repo/plugins
+      - cms-node-modules:/repo/apps/cms/node_modules
+      # Dev keeps uploads in the source tree (git-ignored), not the named volume
+      # docker-compose.yml uses.
+      - ./apps/cms/media:/repo/apps/cms/media
+    ports:
+      - "${POLYSITE_CMS_PORT:-3001}:3001"
+
+  # Same: back up the dev media folder, not the named volume.
+  backup:
+    volumes:
+      - ./apps/cms/media:/media:ro
+
+  restore:
+    volumes:
+      - ./apps/cms/media:/media
+
+  web:
+    build:
+      target: dev
+    volumes:
+      - ./apps/web:/repo/apps/web
+      # Whole directory, not one mount per theme -- a new theme folder
+      # appears here automatically on container restart, no compose edit
+      # needed; nuxt.config.ts's own scan decides what's valid.
+      - ${POLYSITE_THEMES_DIR:-./themes}:/repo/themes
+      # A plugin can carry a web part (plugins/<name>/web, a Nuxt layer); nuxt.config.ts finds it.
+      - ${POLYSITE_PLUGINS_DIR:-./plugins}:/repo/plugins
+      - web-node-modules:/repo/apps/web/node_modules
+      # Bind-mounting the whole apps/web dir also overlays .nuxt, wiping the
+      # generated types/virtual-import manifest (`nuxt prepare`) that `nuxt
+      # dev` needs on boot -- same class of problem node_modules has above.
+      - web-nuxt-cache:/repo/apps/web/.nuxt
+    ports:
+      - "${POLYSITE_WEB_PORT:-3000}:3000"
+
+volumes:
+  cms-node-modules:
+  web-node-modules:
+  web-nuxt-cache:

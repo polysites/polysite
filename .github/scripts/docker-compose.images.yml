@@ -1,0 +1,19 @@
+# Override used by .github/scripts/smoke-images.sh: runs the smoke stack from IMAGES (the ones the release workflow just pushed,
+# by digest) instead of building from source. Nothing is published on the host.
+services:
+  caddy:
+    ports: !reset []
+  db:
+    ports: !reset []
+  web:
+    build: !reset null
+    image: ${WEB_IMAGE:?WEB_IMAGE is required}
+  cms:
+    build: !reset null
+    image: ${CMS_IMAGE:?CMS_IMAGE is required}
+  backup:
+    build: !reset null
+    image: ${BACKUP_IMAGE:?BACKUP_IMAGE is required}
+  restore:
+    build: !reset null
+    image: ${BACKUP_IMAGE:?BACKUP_IMAGE is required}

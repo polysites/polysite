@@ -1,0 +1,156 @@
+# Production stack on the single VM. Nothing is built here: the services run published, versioned images.
+#
+# Deploy with deploy/deploy.sh <version> (docs/guide/deploying.md). It takes a backup, applies the database
+# migrations in a one-off container, switches one service at a time behind health gates, and rolls back by itself
+# if a gate fails. By hand, with POLYSITE_VERSION set in the environment or in the env file:
+#   POLYSITE_VERSION=0.1.0 docker compose -f docker-compose.prod.yml pull
+#   POLYSITE_VERSION=0.1.0 docker compose -f docker-compose.prod.yml up -d
+#
+# Image selection (all optional except the version):
+#   POLYSITE_VERSION    the release to run, such as 0.1.0 or 0.2.0-beta.1 (the image tag is v<version>). Required.
+#   POLYSITE_REGISTRY   where the images live (default: the project's GitHub Container Registry namespace).
+#   POLYSITE_CMS_IMAGE / POLYSITE_WEB_IMAGE / POLYSITE_BACKUP_IMAGE
+#                       a full image reference that overrides the two above for one service. deploy.sh uses these
+#                       to pin each service to an exact digest (repo@sha256:...), and to roll back to one.
+#
+# The published images hold the core only. Themes and plugins are fixed at build time, so a site that uses them runs
+# an image built from source (docs/guide/plugins.md): put its reference in POLYSITE_CMS_IMAGE / POLYSITE_WEB_IMAGE.
+# The backup image is published for Postgres 16; for another major version build backup with
+# --build-arg PG_MAJOR=<n> and set POLYSITE_BACKUP_IMAGE.
+#
+# Differences from docker-compose.yml (local dev):
+#   - No local `db` service — DATABASE_URL points at Cloud SQL via cloudsql-proxy.
+#   - Caddy binds real domains from .env (SITE_DOMAIN / CMS_DOMAIN) and gets
+#     real Let's Encrypt certificates automatically, one per hostname.
+#   - Images are pulled by version, never built on the server.
+
+name: polysite
+
+# Docker keeps every container's log forever unless told otherwise, which fills a long-running server's disk. Each service keeps at most
+# 5 files of 10 MB (50 MB), then drops the oldest.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  caddy:
+    logging: *default-logging
+    image: caddy:2-alpine
+    restart: unless-stopped
+    # Drops every kernel capability except the one it needs to listen on ports 80 and 443.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - static-content:/srv/static:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    env_file: .env
+    depends_on:
+      - web
+      - cms
+
+  web:
+    logging: *default-logging
+    image: ${POLYSITE_WEB_IMAGE:-${POLYSITE_REGISTRY:-ghcr.io/polysites}/polysite-web:v${POLYSITE_VERSION:?POLYSITE_VERSION is required}}
+    restart: unless-stopped
+    # Runs unprivileged already; these also stop it gaining privileges or using kernel capabilities it has no use for.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    env_file: .env
+    environment:
+      OTEL_SERVICE_NAME: polysite-web
+      # Read at runtime. nuxt.config.ts only has these as build-time defaults, and an
+      # image build does not see .env, so without this Live Preview points at admin.localhost.
+      NUXT_PUBLIC_CMS_SERVER_URL: ${CMS_SCHEME:-http}://${CMS_DOMAIN:-admin.localhost}
+    volumes:
+      - static-content:/app/.output/public
+    depends_on:
+      - cms
+
+  cms:
+    logging: *default-logging
+    image: ${POLYSITE_CMS_IMAGE:-${POLYSITE_REGISTRY:-ghcr.io/polysites}/polysite-cms:v${POLYSITE_VERSION:?POLYSITE_VERSION is required}}
+    restart: unless-stopped
+    # Runs unprivileged already; these also stop it gaining privileges or using kernel capabilities it has no use for.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    env_file: .env
+    environment:
+      OTEL_SERVICE_NAME: polysite-cms
+    volumes:
+      # Uploaded files (Media's staticDir is the relative path "media"). Without a
+      # volume they live in the container and are lost on every redeploy.
+      - media-data:/repo/apps/cms/media
+    depends_on:
+      - cloudsql-proxy
+
+  redis:
+    logging: *default-logging
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redis-data:/data
+
+  # Scheduled database + media backups, and the tool to restore them. See
+  # docs/guide/backups.md. The published image is built for Postgres 16; the client
+  # must match the Cloud SQL major version (see the note at the top of this file).
+  backup:
+    logging: *default-logging
+    image: ${POLYSITE_BACKUP_IMAGE:-${POLYSITE_REGISTRY:-ghcr.io/polysites}/polysite-backup:v${POLYSITE_VERSION:?POLYSITE_VERSION is required}}
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - media-data:/media:ro
+      - ${BACKUP_HOST_DIR:-./backups}:/backups
+    depends_on:
+      - cloudsql-proxy
+
+  # Not started by `up`. Used on purpose: docker compose --profile restore run --rm restore latest --yes
+  restore:
+    logging: *default-logging
+    profiles: ["restore"]
+    image: ${POLYSITE_BACKUP_IMAGE:-${POLYSITE_REGISTRY:-ghcr.io/polysites}/polysite-backup:v${POLYSITE_VERSION:?POLYSITE_VERSION is required}}
+    entrypoint: ["/opt/backup/restore.sh"]
+    env_file: .env
+    volumes:
+      - media-data:/media
+      - ${BACKUP_HOST_DIR:-./backups}:/backups
+
+  # Secure tunnel to the managed Cloud SQL instance — the standard pattern for
+  # a non-GKE/non-Cloud-Run VM talking to Cloud SQL without exposing it
+  # publicly. Requires GOOGLE_APPLICATION_CREDENTIALS / a service account key
+  # and CLOUD_SQL_CONNECTION_NAME to be set in .env on the VM.
+  cloudsql-proxy:
+    logging: *default-logging
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
+    restart: unless-stopped
+    command:
+      - "--address=0.0.0.0"
+      - "--port=5432"
+      - "${CLOUD_SQL_CONNECTION_NAME}"
+    volumes:
+      - ${GOOGLE_APPLICATION_CREDENTIALS_HOST_PATH}:/secrets/sa-key.json:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/sa-key.json
+
+volumes:
+  static-content:
+  caddy-data:
+  caddy-config:
+  redis-data:
+  media-data:

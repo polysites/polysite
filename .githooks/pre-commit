@@ -1,0 +1,37 @@
+#!/bin/sh
+# Lint + test both apps before every commit -- see CONTRIBUTING.md's "No dev
+# language runtimes on host" rule for why this runs via `docker exec`
+# against the already-running dev containers instead of a host-installed
+# npm/eslint/vitest. Enable this hook once per clone with:
+#   git config core.hooksPath .githooks
+#
+# Runs both apps unconditionally regardless of which files are staged --
+# simpler than diffing staged paths against each app's directory, and the
+# combined lint+test cost here is a few seconds, not worth the complexity
+# of only running what "looks" affected.
+
+set -e
+
+# Container names follow the Compose project name (polysite unless COMPOSE_PROJECT_NAME says otherwise).
+CMS_CONTAINER="${COMPOSE_PROJECT_NAME:-polysite}-cms-1"
+WEB_CONTAINER="${COMPOSE_PROJECT_NAME:-polysite}-web-1"
+
+for name in "$CMS_CONTAINER" "$WEB_CONTAINER"; do
+  if ! docker inspect -f '{{.State.Running}}' "$name" >/dev/null 2>&1; then
+    echo "pre-commit: $name isn't running -- start the dev stack first:"
+    echo "  docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build"
+    exit 1
+  fi
+done
+
+echo "pre-commit: linting + testing apps/cms..."
+docker exec "$CMS_CONTAINER" npm run lint
+docker exec "$CMS_CONTAINER" npm test
+docker exec "$CMS_CONTAINER" npm run check:migrations
+
+echo "pre-commit: linting + testing apps/web..."
+docker exec "$WEB_CONTAINER" npm run lint
+docker exec "$WEB_CONTAINER" npm run lint:plugins
+docker exec "$WEB_CONTAINER" npm test
+
+echo "pre-commit: all checks passed."

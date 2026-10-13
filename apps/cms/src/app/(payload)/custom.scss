@@ -1,0 +1,225 @@
+// First-run setup page (components/Setup). Uses Payload's own theme variables so it
+// follows the admin's light/dark mode; --polysite-accent comes from components/Brand.
+
+.polysite-setup {
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  color: var(--theme-text);
+
+  > div:first-child {
+    align-self: center;
+    margin-bottom: 0.5rem;
+  }
+
+  h1 {
+    margin: 0.5rem 0 0;
+    font-size: 1.75rem;
+    text-align: center;
+  }
+
+  &__lead {
+    margin: 0 0 0.5rem;
+    text-align: center;
+    color: var(--theme-elevation-600);
+    line-height: 1.5;
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+
+    fieldset {
+      margin: 0;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      border: 1px solid var(--theme-elevation-150);
+      border-radius: 0.5rem;
+      background: var(--theme-elevation-50);
+    }
+
+    legend {
+      padding: 0 0.5rem;
+      font-weight: 600;
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+
+    label {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    input:not([type='checkbox']),
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.6rem 0.75rem;
+      font: inherit;
+      color: var(--theme-text);
+      background: var(--theme-input-bg, var(--theme-bg));
+      border: 1px solid var(--theme-elevation-200);
+      border-radius: 0.375rem;
+
+      &:focus-visible {
+        outline: 2px solid var(--polysite-accent, #3e5ba6);
+        outline-offset: 1px;
+      }
+
+      &[aria-invalid='true'] {
+        border-color: var(--theme-error-500, #d33);
+      }
+    }
+  }
+
+  &__hint,
+  &__note {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--theme-elevation-600);
+  }
+
+  &__note {
+    padding: 0.75rem 0.9rem;
+    border-left: 3px solid var(--polysite-accent, #3e5ba6);
+    background: var(--theme-bg);
+    border-radius: 0 0.375rem 0.375rem 0;
+  }
+
+  &__error {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--theme-error-500, #d33);
+  }
+
+  &__message {
+    text-align: center;
+  }
+
+  &__check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  &__submit {
+    padding: 0.75rem 1rem;
+    font: inherit;
+    font-weight: 600;
+    color: #fff;
+    background: var(--polysite-accent, #3e5ba6);
+    border: 0;
+    border-radius: 0.375rem;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: progress;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--theme-text);
+      outline-offset: 2px;
+    }
+  }
+}
+
+// The brand mark's theme-aware colors (components/Brand/*). Set off Payload's own
+// data-theme attribute on <html>. Kept here, not in a <style> tag inside the
+// components: inside the admin header a <style> element got displayed, and its
+// first letters showed above the logo.
+html[data-theme="dark"] {
+  --polysite-ink: #f2f4f8;
+  --polysite-accent: #6b8fd4;
+}
+
+html:not([data-theme="dark"]) {
+  --polysite-ink: #16213e;
+  --polysite-accent: #3e5ba6;
+}
+
+// With one language there is nothing to choose, so the language picker and the "— English" after each translatable field stay out of
+// sight. The i18n plugin sets data-polysite-multilingual on <html> once a site offers more than one language.
+html:not([data-polysite-multilingual]) {
+  .localizer,
+  .field-label .localized {
+    display: none;
+  }
+}
+
+// The admin's two brand typefaces, served from this site (public/fonts, SIL Open Font License; the licence text sits beside the
+// files and in NOTICE). The admin used to load Lora from fonts.googleapis.com, which sent every editor's address to Google.
+// Only the Latin subset at weight 600 is bundled: the wordmark and the "CMS" caption are the only text set in them.
+@font-face {
+  font-family: "Lora";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/lora-latin-600-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/inter-latin-600-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+// Colours for the sidebar's own accents (components/AdminNav). They were one fixed pale indigo meant for the dark theme, which
+// is unreadable on the light theme (1.08:1 for the active link).
+html[data-theme="dark"] {
+  --polysite-nav-active-text: #e3e3fb;
+  --polysite-nav-muted-accent: #a3a3f0;
+  --polysite-nav-avatar-text: #d6d6fb;
+}
+
+html:not([data-theme="dark"]) {
+  --polysite-nav-active-text: #2f2f94;
+  --polysite-nav-muted-accent: #45459f;
+  --polysite-nav-avatar-text: #2f2f94;
+}
+
+// Payload's stock admin sets some body text in its palest grey (about 2.8:1 on white, WCAG AA asks for 4.5:1): field descriptions,
+// the labels of the "Add" buttons, the upload dropzone's hint, and the SEO plugin's inline grey text and
+// its white-on-red "Missing" badges. Only text colours are changed here; the rest of the palette is untouched.
+.field-description,
+.btn--style-icon-label .btn__label,
+.upload__dropzoneContent__orText,
+.upload__dragAndDropText {
+  color: var(--theme-elevation-600);
+}
+
+[style*="color: rgb(154, 154, 154)"] {
+  color: var(--theme-elevation-600) !important;
+}
+
+[style*="background-color: red"] {
+  background-color: #b00020 !important;
+}
+
+// Inactive tab buttons are the page text at half opacity (about 2.9:1); three quarters is 6:1 and still reads as inactive.
+.tabs-field__tab-button:not(.tabs-field__tab-button--active) {
+  opacity: 0.75;
+}

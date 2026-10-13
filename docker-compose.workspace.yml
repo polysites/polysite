@@ -1,0 +1,22 @@
+# For the sibling-repository layout: polysite, polysite-plugins and polysite-themes cloned side by side.
+# Adds the two sibling repositories to the image build, so a production-style build (docker compose up --build) contains them:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.workspace.yml up --build
+#
+# For the fast development loop, add docker-compose.dev.yml as well (it bind-mounts the same folders):
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.workspace.yml up -d --build
+#
+# POLYSITE_THEMES_DIR and POLYSITE_PLUGINS_DIR (in .env) say where the siblings are; the defaults assume the folder names of a
+# plain clone. Without this file, or without the folders, the core builds and runs on its own.
+services:
+  cms:
+    build:
+      additional_contexts:
+        themes: ${POLYSITE_THEMES_DIR:-../polysite-themes}
+        plugins: ${POLYSITE_PLUGINS_DIR:-../polysite-plugins}
+  web:
+    build:
+      additional_contexts:
+        themes: ${POLYSITE_THEMES_DIR:-../polysite-themes}
+        plugins: ${POLYSITE_PLUGINS_DIR:-../polysite-plugins}

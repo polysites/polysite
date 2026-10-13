@@ -1,0 +1,19 @@
+# Vulnerabilities the release workflow's image scan (HIGH and CRITICAL) is told to accept.
+# One finding id per line (CVE-2026-12345). Every entry needs a comment above it that says WHY it is acceptable (not
+# reachable, no fix exists and the risk was assessed, base image fix coming), who accepted it, and an expiry date to
+# look at it again. An empty list is the goal. Without an entry the release stops.
+#
+# Example (do not uncomment):
+#   # libfoo is only used by the build stage, not present in the runtime image. Accepted by <name> 2026-10-11; review by 2026-12-01.
+#   CVE-2026-00000
+
+# braces 3.0.3 (CMS image): a denial of service from deeply nested brace patterns. It is pulled in by build and lint tools only
+# (@payloadcms/next > sass > chokidar; eslint-config-next > fast-glob > micromatch), never on a request path; the package is in the
+# runtime image only because node_modules is copied whole. 3.0.3 is the latest release, so no fix exists.
+# Accepted by the owner 2026-10-11; review by 2027-01-09 (drop the entry when a fixed release exists).
+CVE-2026-93687 exp:2027-01-09
+
+# http-cache-semantics 4.2.0 inside npm in the CMS image: information disclosure through max-stale on a shared cache. npm only
+# runs `payload migrate` and `npm start` here, with no user-facing HTTP cache; release 4.3.0 does not change the affected logic.
+# Accepted by the owner 2026-10-11; review by 2027-01-09.
+CVE-2026-93748 exp:2027-01-09

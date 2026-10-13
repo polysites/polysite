@@ -1,0 +1,126 @@
+name: CI
+
+# Lint + unit tests (ESLint/Vitest, both apps) plus build-verification —
+# catches a broken Dockerfile/dependency, a style/correctness regression
+# (no-explicit-any, react-hooks rules, etc.), or a regression in priority
+# logic (RBAC, slug normalization, redirect resolution) before it ever
+# reaches a release. Runs on every push and PR; release.yml publishes images but never deploys (deploying is a deliberate step: deploy/deploy.sh).
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  # Called by release.yml, so a release runs exactly the gates every push does.
+  workflow_call:
+
+# Least privilege: the jobs only read the repository. (Called from release.yml, which may grant no more than this.)
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/web
+      - name: Lint
+        run: npm run lint
+        working-directory: apps/web
+      - name: Run unit tests
+        run: npm test
+        working-directory: apps/web
+
+  lint-and-test-cms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/cms
+      - name: Lint
+        run: npm run lint
+        working-directory: apps/cms
+      - name: Run unit tests
+        run: npm test
+        working-directory: apps/cms
+      # Taking a plugin away must never delete what its users created: a migration that drops tables or columns
+      # (usually generated while a plugin was missing) fails here unless it says so on purpose.
+      - name: Check migrations don't delete data
+        run: npm run check:migrations
+        working-directory: apps/cms
+
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # The core builds on its own. themes/ and plugins/ are separate repositories that the Dockerfiles copy in
+      # when they are present; here they are empty, which is the "no themes, no plugins" install.
+      - name: Create empty themes and plugins folders
+        run: mkdir -p themes plugins
+      - name: Build web image
+        run: docker build -f apps/web/Dockerfile --target run -t polysite-web-ci .
+
+  build-cms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # The core builds on its own. themes/ and plugins/ are separate repositories that the Dockerfiles copy in
+      # when they are present; here they are empty, which is the "no themes, no plugins" install.
+      - name: Create empty themes and plugins folders
+        run: mkdir -p themes plugins
+      - name: Build cms image
+        run: docker build -f apps/cms/Dockerfile --target run -t polysite-cms-ci .
+
+  # A fresh install of the core alone (no themes, no plugins), driven end to end: first-run setup, sign in, publish a
+  # page, the public site, a form submission, a redirect (tests/smoke/smoke.mjs). Catches what unit tests can't.
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Smoke test a fresh install
+        run: sh tests/smoke/run.sh
+
+  # The backup tooling against a throwaway Postgres: an off-site copy is refused without a strong passphrase, only encrypted
+  # archives are copied, verify and restore open encrypted archives (tests/backup/).
+  backup-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Backup encryption and off-site rules
+        run: sh tests/backup/run.sh
+
+  # The plugin end-to-end checks (drafts, languages, two-factor, single sign-on, on the whole stack WITH the plugins). The core
+  # never depends on the plugins repository, so this job only runs when that repository can be read: add a read-only deploy key
+  # to polysite-plugins and put its private half in this repository's secrets as PLUGINS_DEPLOY_KEY (see tests/e2e/README.md).
+  # Without the key it reports that it was skipped and passes.
+  e2e-plugins:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HAS_KEY: ${{ secrets.PLUGINS_DEPLOY_KEY != '' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Say whether this job can run
+        run: |
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "::notice::Skipped: no PLUGINS_DEPLOY_KEY secret, so the plugins repository cannot be read. The core's own jobs do not need it."
+          fi
+      - name: Fetch the plugins
+        if: env.HAS_KEY == 'true'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: polysites/polysite-plugins
+          ssh-key: ${{ secrets.PLUGINS_DEPLOY_KEY }}
+          path: plugins
+      - name: Plugin end-to-end checks
+        if: env.HAS_KEY == 'true'
+        run: PLUGINS_DIR="$PWD/plugins" sh tests/e2e/run-with-plugins.sh

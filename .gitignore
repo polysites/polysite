@@ -1,0 +1,49 @@
+.env
+node_modules/
+.nuxt/
+.output/
+.next/
+payload-types.ts
+*.tsbuildinfo
+
+# Uploaded files (Media collection, local-disk storage) -- runtime data, not
+# source, same reasoning as not committing the Postgres volume.
+apps/cms/media/
+
+# Local pg_dump backups taken before a risky dev-DB schema change.
+*.dump
+
+# Client theme repos live nested here but are independent git repositories
+# with their own remotes — see themes/README.md. Leading
+# slash anchors this to the repo root -- unanchored, it would also match (and
+# hide from git) any directory named "themes" anywhere else in the tree.
+/themes/
+
+# Plugins live nested here but are their own independent git repository --
+# same mechanic as themes/ above. See plugins/README.md. Anchored for the
+# same reason: unanchored, this silently swallowed apps/cms/src/plugins/
+# (a real, caught-for-real mistake, not a hypothetical).
+/plugins/
+
+# Payload's admin import map is generated from the live config (including
+# any installed plugin's admin components), so it differs per install and
+# must not be committed -- a clone without a given plugin would fail to
+# build against another machine's copy. `payload generate:importmap` runs in
+# the Dockerfile build stage and in the dev container's start command;
+# importMap.d.ts (committed, next to it) keeps tsc happy before it exists.
+apps/cms/src/app/\(payload\)/admin/importMap.js
+
+# Docs site (VitePress) build output and dependencies
+docs/node_modules/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
+# Local backup archives (backup, docs/guide/backups.md) -- contain real data.
+/backups/
+
+# Written by apps/web/nuxt.config.ts at start (the theme and plugin layers Tailwind must scan).
+apps/web/assets/css/layer-sources.css
+
+
+# Claude Code local instructions (they live in ../.claude, not in this repository)
+CLAUDE.local.md

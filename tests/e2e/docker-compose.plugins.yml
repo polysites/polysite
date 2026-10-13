@@ -1,0 +1,11 @@
+# Extra settings for the plugin end-to-end run (tests/e2e/run-with-plugins.sh), on top of the smoke stack's.
+services:
+  cms:
+    environment:
+      # Lets the single-sign-on plugin talk to the plain-http mock identity provider. Never set this on a real install.
+      AUTH_SSO_ALLOW_HTTP: "1"
+      # Turns on API keys, so their end-to-end check runs (off by default on a real install).
+      AUTH_API_KEYS: "true"
+      # The suite signs in far more often than a person would, all from one address through the proxy: lift the per-address limits for it only.
+      POLYSITE_LOGIN_RATE_LIMIT: "100000"
+      POLYSITE_RESET_RATE_LIMIT: "100000"
