@@ -15,7 +15,7 @@ FROM scratch AS plugins
 # Dockerfile edit needed per theme anymore.
 # Nuxt 4.5.2 requires Node ^22.19.0 || ^24.11.0 || >=26.0.0 (real npm
 # EBADENGINE warning on node:20-alpine caught this). Both images are on the Node 24 LTS line (Node 20 is end-of-life).
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 # No telemetry: Nuxt collects anonymous usage data unless told not to, in a build or a dev server as much as at run time.
 ENV NUXT_TELEMETRY_DISABLED=1
 # Installs exactly what package-lock.json says (npm ci), so a build today and a build next month use the same third-party
@@ -40,7 +40,7 @@ COPY --from=plugins / plugins/
 WORKDIR /repo/apps/web
 RUN npm run build
 
-FROM node:24-alpine AS run
+FROM node:26-alpine AS run
 # No telemetry: Nuxt collects anonymous usage data unless told not to, in a build or a dev server as much as at run time.
 ENV NUXT_TELEMETRY_DISABLED=1
 WORKDIR /app
@@ -72,7 +72,7 @@ CMD ["node", ".output/server/index.mjs"]
 # `nuxi prepare` in CMD, once the real bind-mounted source is present,
 # regenerates it correctly -- otherwise `nuxt dev` fails to resolve its own
 # virtual imports (e.g. "#app-manifest") at runtime.
-FROM node:24-alpine AS dev
+FROM node:26-alpine AS dev
 # No telemetry: Nuxt collects anonymous usage data unless told not to, in a build or a dev server as much as at run time.
 ENV NUXT_TELEMETRY_DISABLED=1
 WORKDIR /repo/apps/web
