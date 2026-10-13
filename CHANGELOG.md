@@ -13,6 +13,12 @@ it stood on that day, so the first entry below is written from the product's doc
 
 ## [Unreleased]
 
+### Fixed
+
+- **Release build.** The multi-platform build of the web image no longer fails when the third-party scripts that `@nuxt/scripts`
+  wraps (Gravatar, Calendly) cannot be downloaded while the app is built; it falls back to their own addresses. The tag
+  `v0.1.0-beta.1` failed on this and has no GitHub release; use 0.1.0-beta.2.
+
 ## [0.1.0-beta.1] - 2026-10-13
 
 ### Added
