@@ -13,6 +13,8 @@ it stood on that day, so the first entry below is written from the product's doc
 
 ## [Unreleased]
 
+## [0.1.0-beta.1] - 2026-10-13
+
 ### Added
 
 - **Multisite core.** Every site resolves by its own domain; content, media and users are scoped per site, so an
@@ -98,3 +100,6 @@ it stood on that day, so the first entry below is written from the product's doc
 - A Docker volume created by an older image (media, static content) is owned by root and a non-root container
   cannot write to it. Once, before the first deploy of these images: `docker run --rm -v <project>_media-data:/m
   -v <project>_static-content:/s alpine chown -R 1000:1000 /m /s` (Known Issue 58).
+
+[Unreleased]: https://github.com/polysites/polysite/compare/v0.1.0-beta.1...HEAD
+[0.1.0-beta.1]: https://github.com/polysites/polysite/releases/tag/v0.1.0-beta.1
