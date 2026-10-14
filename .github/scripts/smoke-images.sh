@@ -46,6 +46,8 @@ wait_healthy web
 if [ -n "${EXPECT_VERSION:-}" ]; then
   for pair in "cms $CMS_IMAGE" "web $WEB_IMAGE" "backup $BACKUP_IMAGE"; do
     svc=${pair%% *}; img=${pair#* }
+    # The backup image is not part of the running stack, so nothing has pulled it yet; local images are already there.
+    docker image inspect "$img" >/dev/null 2>&1 || docker pull --quiet "$img" >/dev/null
     got=$(docker image inspect "$img" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')
     [ "$got" = "$EXPECT_VERSION" ] || { echo "$svc image says version '$got', expected $EXPECT_VERSION"; exit 1; }
   done

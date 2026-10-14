@@ -13,6 +13,12 @@ it stood on that day, so the first entry below is written from the product's doc
 
 ## [Unreleased]
 
+### Fixed
+
+- **Release smoke test.** The check that runs the freshly published images stopped with "No such image" because the backup image
+  was never pulled before its version label was read. It now pulls any image that is not present. The tag `v0.1.0-beta.3` built
+  and published its images and they started healthy, but this check failed, so it has no GitHub release; use 0.1.0-beta.4.
+
 ## [0.1.0-beta.3] - 2026-10-14
 
 ### Fixed
@@ -20,7 +26,7 @@ it stood on that day, so the first entry below is written from the product's doc
 - **Release build.** Each image is now built once per architecture on a runner of that architecture (amd64 on an x86 runner,
   arm64 on a native Arm runner) and the two are merged under the version tag. The arm64 half of the web image used to be built
   under emulation on an x86 runner, and the Nuxt build hung there until the job limit. The tags `v0.1.0-beta.1` and
-  `v0.1.0-beta.2` both failed, have no GitHub release and never moved `latest`; use 0.1.0-beta.3. BuildKit's own provenance and
+  `v0.1.0-beta.2` both failed, have no GitHub release and never moved `latest`. BuildKit's own provenance and
   SBOM are no longer embedded in the published images; the signed GitHub attestations and the SPDX SBOM are made on the final
   multi-architecture image, by digest, as before.
 
