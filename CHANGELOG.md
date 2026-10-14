@@ -13,13 +13,22 @@ it stood on that day, so the first entry below is written from the product's doc
 
 ## [Unreleased]
 
+### Fixed
+
+- **Release build.** Each image is now built once per architecture on a runner of that architecture (amd64 on an x86 runner,
+  arm64 on a native Arm runner) and the two are merged under the version tag. The arm64 half of the web image used to be built
+  under emulation on an x86 runner, and the Nuxt build hung there until the job limit. The tags `v0.1.0-beta.1` and
+  `v0.1.0-beta.2` both failed, have no GitHub release and never moved `latest`; use 0.1.0-beta.3. BuildKit's own provenance and
+  SBOM are no longer embedded in the published images; the signed GitHub attestations and the SPDX SBOM are made on the final
+  multi-architecture image, by digest, as before.
+
 ## [0.1.0-beta.2] - 2026-10-13
 
 ### Fixed
 
 - **Release build.** The multi-platform build of the web image no longer fails when the third-party scripts that `@nuxt/scripts`
   wraps (Gravatar, Calendly) cannot be downloaded while the app is built; it falls back to their own addresses. The tag
-  `v0.1.0-beta.1` failed on this and has no GitHub release; use 0.1.0-beta.2.
+  `v0.1.0-beta.1` failed on this and has no GitHub release. (`v0.1.0-beta.2` failed too, for another reason: see 0.1.0-beta.3.)
 
 ## [0.1.0-beta.1] - 2026-10-13
 
