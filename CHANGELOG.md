@@ -13,6 +13,8 @@ it stood on that day, so the first entry below is written from the product's doc
 
 ## [Unreleased]
 
+## [0.1.0-beta.3] - 2026-10-14
+
 ### Fixed
 
 - **Release build.** Each image is now built once per architecture on a runner of that architecture (amd64 on an x86 runner,
@@ -118,6 +120,7 @@ it stood on that day, so the first entry below is written from the product's doc
   cannot write to it. Once, before the first deploy of these images: `docker run --rm -v <project>_media-data:/m
   -v <project>_static-content:/s alpine chown -R 1000:1000 /m /s` (Known Issue 58).
 
-[Unreleased]: https://github.com/polysites/polysite/compare/v0.1.0-beta.2...HEAD
+[Unreleased]: https://github.com/polysites/polysite/compare/v0.1.0-beta.3...HEAD
+[0.1.0-beta.3]: https://github.com/polysites/polysite/compare/v0.1.0-beta.2...v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/polysites/polysite/compare/v0.1.0-beta.1...v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/polysites/polysite/releases/tag/v0.1.0-beta.1
