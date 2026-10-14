@@ -51,6 +51,7 @@ jobs:
       dry_run: ${{ steps.mode.outputs.dry_run }}
       owner: ${{ steps.mode.outputs.owner }}
       platforms: ${{ steps.mode.outputs.platforms }}
+      platform_matrix: ${{ steps.mode.outputs.platform_matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -63,11 +64,15 @@ jobs:
         run: |
           if [ "$EVENT_NAME" = push ]; then
             echo "dry_run=false" >> "$GITHUB_OUTPUT"
-            echo "platforms=linux/amd64,linux/arm64" >> "$GITHUB_OUTPUT"
+            platforms="linux/amd64,linux/arm64"
           else
             echo "dry_run=true" >> "$GITHUB_OUTPUT"
-            echo "platforms=${INPUT_PLATFORMS:-linux/amd64}" >> "$GITHUB_OUTPUT"
+            platforms="${INPUT_PLATFORMS:-linux/amd64}"
           fi
+          echo "platforms=$platforms" >> "$GITHUB_OUTPUT"
+          # One build job per platform, each on a runner of that architecture (nothing is built under emulation).
+          matrix=$(printf '%s' "$platforms" | tr ',' '\n' | jq -R -s -c 'split("\n") | map(select(length > 0)) | map({platform: ., arch: (split("/")[1]), runner: (if . == "linux/arm64" then "ubuntu-24.04-arm" else "ubuntu-latest" end)})')
+          echo "platform_matrix=$matrix" >> "$GITHUB_OUTPUT"
           # Registry namespaces must be lower case.
           echo "owner=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
       - name: Tag, VERSION, package versions and changelog agree
@@ -131,19 +136,24 @@ jobs:
     uses: ./.github/workflows/ci.yml
     secrets: inherit
 
+  # One job per image and platform, each on a runner of that architecture (amd64 on ubuntu-latest, arm64 on ubuntu-24.04-arm,
+  # which GitHub provides free for public repositories). Building arm64 under QEMU emulation on an x86 runner hung on the web
+  # image's Nuxt build (the 0.1.0-beta.1 and 0.1.0-beta.2 releases), so nothing is emulated. Each job pushes its image BY DIGEST
+  # only; the merge job below puts the digests under the version tag. The vulnerability scan runs on the amd64 build, before
+  # anything of that image is pushed.
   build:
-    name: Image ${{ matrix.image }}
+    name: Image ${{ matrix.image }} (${{ matrix.platform.arch }})
     needs: [prepare, gates]
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
+    runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 60
     permissions:
       contents: read
       packages: write        # push to GHCR
-      id-token: write        # sign the provenance attestation
-      attestations: write    # store the attestations
     strategy:
       fail-fast: false
       matrix:
+        image: [cms, web, backup]
+        platform: ${{ fromJSON(needs.prepare.outputs.platform_matrix) }}
         include:
           - image: cms
             dockerfile: apps/cms/Dockerfile
@@ -163,28 +173,20 @@ jobs:
     env:
       NAME: ghcr.io/${{ needs.prepare.outputs.owner }}/polysite-${{ matrix.image }}
       VERSION: ${{ needs.prepare.outputs.version }}
-      DRY: ${{ needs.prepare.outputs.dry_run }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The images hold the core only. themes/ and plugins/ are separate repositories that the Dockerfiles copy when
       # present; here they are empty (themes and plugins are fixed at build time, so a site that uses them builds its own).
       - name: Empty themes and plugins folders
         run: mkdir -p themes plugins
-      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-        with:
-          platforms: arm64
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Image tags and labels
+      - name: Image labels
         id: meta
         env:
           DESCRIPTION: ${{ matrix.description }}
           IMAGE: ${{ matrix.image }}
         run: |
           {
-            # Only the exact version is pushed here. vX.Y and latest move in the promote job, after the smoke test.
-            echo "tags<<EOF"
-            echo "$NAME:v$VERSION"
-            echo "EOF"
             echo "labels<<EOF"
             echo "org.opencontainers.image.title=polysite-$IMAGE"
             echo "org.opencontainers.image.description=$DESCRIPTION"
@@ -194,8 +196,9 @@ jobs:
             echo "org.opencontainers.image.vendor=Polysite"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-      # 1. Build the amd64 image into the local Docker daemon and scan it BEFORE anything is pushed.
+      # 1. On amd64: build the image into the local Docker daemon and scan it BEFORE anything is pushed.
       - name: Build (amd64, local) for the scan
+        if: matrix.platform.arch == 'amd64'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ${{ matrix.context }}
@@ -210,9 +213,10 @@ jobs:
             POLYSITE_REVISION=${{ github.sha }}
           provenance: false
           sbom: false
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          cache-from: type=gha,scope=${{ matrix.image }}-amd64
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-amd64
       - name: Vulnerability scan (fails on HIGH or CRITICAL, except what .trivyignore explains)
+        if: matrix.platform.arch == 'amd64'
         run: |
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
@@ -226,57 +230,114 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # 2. The real build for every platform. The layers come from the cache, so only the other architecture is new work.
-      #    A dry run builds it too (the platforms input) but pushes nothing.
-      - name: Build all platforms (pushed unless this is a dry run)
+      # 2. The real build for this platform, pushed by digest (a dry run builds it too but pushes nothing). The attestations
+      #    are made on the merged image below, by digest, so no BuildKit attestation is attached to the single-platform image.
+      - name: Build this platform (pushed by digest unless this is a dry run)
         id: push
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           target: ${{ matrix.target }}
-          platforms: ${{ needs.prepare.outputs.platforms }}
-          push: ${{ needs.prepare.outputs.dry_run == 'false' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          platforms: ${{ matrix.platform.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             POLYSITE_VERSION=${{ needs.prepare.outputs.version }}
             POLYSITE_REVISION=${{ github.sha }}
-          provenance: mode=max
-          sbom: true
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
-      # 3. Attest by digest, never by tag.
-      - name: Provenance attestation
-        if: needs.prepare.outputs.dry_run == 'false'
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
-        with:
-          subject-name: ${{ env.NAME }}
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
-      - name: SBOM of the pushed image
+          provenance: false
+          sbom: false
+          outputs: type=image,name=${{ env.NAME }},push-by-digest=true,name-canonical=true,push=${{ needs.prepare.outputs.dry_run == 'false' }}
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.platform.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.platform.arch }}
+      - name: Record this platform's digest
         if: needs.prepare.outputs.dry_run == 'false'
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: needs.prepare.outputs.dry_run == 'false'
+        with:
+          name: platform-${{ matrix.image }}-${{ matrix.platform.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Puts the per-platform images under the version tag as one multi-architecture image, then attests that image by digest
+  # (never by tag), writes its SBOM and records the digest for the smoke test and the release.
+  merge:
+    name: Publish ${{ matrix.image }}
+    needs: [prepare, build]
+    if: needs.prepare.outputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write        # push the manifest to GHCR
+      id-token: write        # sign the provenance attestation
+      attestations: write    # store the attestations
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [cms, web, backup]
+    env:
+      NAME: ghcr.io/${{ needs.prepare.outputs.owner }}/polysite-${{ matrix.image }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: platform-${{ matrix.image }}-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/digests
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Only the exact version is pushed here. vX.Y and latest move in the promote job, after the smoke test.
+      - name: Create the multi-architecture image
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          set -eu
+          [ "$(ls | wc -l)" -ge 1 ] || { echo "::error::No platform digests were recorded"; exit 1; }
+          docker buildx imagetools create --tag "$NAME:v$VERSION" $(printf "$NAME@sha256:%s " *)
+      - name: Digest of the published image
+        id: digest
+        run: |
+          set -eu
+          digest=$(docker buildx imagetools inspect "$NAME:v$VERSION" --format '{{json .Manifest}}' | jq -r .digest)
+          case "$digest" in sha256:*) ;; *) echo "::error::Could not read the digest of $NAME:v$VERSION"; exit 1 ;; esac
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          docker buildx imagetools inspect "$NAME:v$VERSION"
+      # Attest by digest, never by tag.
+      - name: Provenance attestation
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.NAME }}
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          push-to-registry: true
+      - name: SBOM of the pushed image
+        env:
+          DIGEST: ${{ steps.digest.outputs.digest }}
         run: |
           docker run --rm -v "$HOME/.docker:/root/.docker:ro" -v "$PWD:/out" "$TRIVY_IMAGE" image --no-progress \
             --format spdx-json --output "/out/sbom-${{ matrix.image }}.spdx.json" "$NAME@$DIGEST"
       - name: SBOM attestation
-        if: needs.prepare.outputs.dry_run == 'false'
         uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
         with:
           subject-name: ${{ env.NAME }}
-          subject-digest: ${{ steps.push.outputs.digest }}
+          subject-digest: ${{ steps.digest.outputs.digest }}
           sbom-path: sbom-${{ matrix.image }}.spdx.json
           push-to-registry: true
       - name: Record the digest
-        if: needs.prepare.outputs.dry_run == 'false'
         env:
-          DIGEST: ${{ steps.push.outputs.digest }}
+          DIGEST: ${{ steps.digest.outputs.digest }}
         run: |
           echo "$NAME@$DIGEST" > "${{ matrix.image }}.ref"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: needs.prepare.outputs.dry_run == 'false'
         with:
           name: digest-${{ matrix.image }}
           path: |
@@ -288,7 +349,7 @@ jobs:
   # (nothing is deleted, but vX.Y and latest have not moved and no release is drafted): docs/guide/releasing.md says what to do.
   smoke-published:
     name: Smoke test the published digests
-    needs: [prepare, build]
+    needs: [prepare, merge]
     if: needs.prepare.outputs.dry_run == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 45
