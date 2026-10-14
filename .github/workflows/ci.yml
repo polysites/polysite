@@ -20,7 +20,7 @@ jobs:
   lint-and-test-web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
@@ -37,7 +37,7 @@ jobs:
   lint-and-test-cms:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
@@ -59,7 +59,7 @@ jobs:
   build-web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The core builds on its own. themes/ and plugins/ are separate repositories that the Dockerfiles copy in
       # when they are present; here they are empty, which is the "no themes, no plugins" install.
       - name: Create empty themes and plugins folders
@@ -70,7 +70,7 @@ jobs:
   build-cms:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The core builds on its own. themes/ and plugins/ are separate repositories that the Dockerfiles copy in
       # when they are present; here they are empty, which is the "no themes, no plugins" install.
       - name: Create empty themes and plugins folders
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Smoke test a fresh install
         run: sh tests/smoke/run.sh
 
@@ -94,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Backup encryption and off-site rules
         run: sh tests/backup/run.sh
 
@@ -108,7 +108,7 @@ jobs:
     env:
       HAS_KEY: ${{ secrets.PLUGINS_DEPLOY_KEY != '' }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Say whether this job can run
         run: |
           if [ "$HAS_KEY" != "true" ]; then
@@ -116,7 +116,7 @@ jobs:
           fi
       - name: Fetch the plugins
         if: env.HAS_KEY == 'true'
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: polysites/polysite-plugins
           ssh-key: ${{ secrets.PLUGINS_DEPLOY_KEY }}
