@@ -85,7 +85,8 @@ export async function AdminNav(props: ServerProps) {
       subgroups={subgroups}
       pluginIcons={pluginIcons}
       isSuperAdmin={superAdmin}
-      userEmail={typeof user?.email === "string" ? user.email : ""}
+      // A plugin can add another sign-in collection (the MCP plugin's API keys), so `user` is not always a staff account.
+      userEmail={user && "email" in user && typeof user.email === "string" ? user.email : ""}
       roleName={roleName}
     />
   );

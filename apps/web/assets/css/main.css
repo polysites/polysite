@@ -50,3 +50,11 @@ h1, h2, h3, h4 {
 .poly-form-defaults .poly-submit:hover { opacity: 0.9; }
 .poly-form-defaults .poly-submit:disabled { opacity: 0.6; cursor: default; }
 .poly-form-defaults .poly-confirmation { padding: 1rem 1.25rem; border-radius: 0.5rem; background: #f0fdf4; color: #14532d; }
+
+/* The signature count and progress bar (PolysiteSignatureCount.vue). Neutral on purpose; a theme restyles the poly-signatures classes. */
+.poly-signatures { margin-bottom: 1.25rem; }
+.poly-signatures-count { margin: 0 0 0.4rem; color: #404040; }
+.poly-signatures-count strong { font-size: 1.5rem; color: #171717; }
+.poly-signatures-bar { height: 0.6rem; border-radius: 999px; background: #e5e5e5; overflow: hidden; }
+.poly-signatures-fill { display: block; height: 100%; border-radius: 999px; background: var(--brand-primary, #2563eb); transition: width 0.6s ease; }
+@media (prefers-reduced-motion: reduce) { .poly-signatures-fill { transition: none; } }

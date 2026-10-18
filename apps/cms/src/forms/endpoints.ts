@@ -3,6 +3,7 @@ import type { Endpoint, PayloadRequest } from "payload";
 
 import { computeExpiry } from "../privacy/retention";
 import { captchaSettings, checkCaptcha, isMisconfigured, publicCaptcha } from "./captcha";
+import { dedupeKeyFor, isDuplicateError, publicCount, TtlCache, type DedupeMode } from "./petition";
 import { clientAddress, checkToken, HONEYPOT_FIELD, issueToken, RateLimiter } from "./spam";
 import { type FormField, inputFields, validateSubmission } from "./validateSubmission";
 
@@ -43,6 +44,7 @@ type LoadedForm = {
   redirect?: { url?: string };
   privacy?: { purpose?: string; consentRequired?: boolean; consentLabel?: string; retentionDays?: number };
   protection?: { captcha?: string | null };
+  petition?: { dedupe?: DedupeMode | null; showCount?: boolean | null; countOffset?: number | null; goal?: number | null };
   site: { id: string | number; domain?: string; privacyPolicyUrl?: string; formProtection?: { turnstileSiteKey?: string | null; turnstileSecretKey?: string | null } };
 };
 
@@ -134,6 +136,8 @@ export const formDefinitionEndpoint: Endpoint = {
         policyUrl: form.site.privacyPolicyUrl || "",
       },
       honeypot: HONEYPOT_FIELD,
+      // Present only when the form's owner switched the public count on (the count itself is at /form-intake/:id/count).
+      signatures: form.petition?.showCount ? { goal: publicCount(0, 0, form.petition.goal).goal } : null,
       token: issueToken(secret(), form.id),
       captcha: publicCaptcha(captcha, secret(), form.id),
     });
@@ -183,6 +187,9 @@ export const formSubmitEndpoint: Endpoint = {
     if (Object.keys(errors).length > 0 || !result.ok) return json({ message: "Please fix the highlighted fields.", errors }, 422);
 
     const now = new Date();
+    // One signature per person, on forms set to ask for it: the same address signing again is answered like a success (so nobody can
+    // use the form to find out who has signed) but stores nothing and adds nothing to the count.
+    const dedupeKey = dedupeKeyFor(secret(), form.id, form.fields, result.rows, form.petition?.dedupe);
 
     try {
       await req.payload.create({
@@ -191,6 +198,7 @@ export const formSubmitEndpoint: Endpoint = {
         data: {
           form: form.id,
           site: form.site.id,
+          dedupeKey: dedupeKey ?? undefined,
           submissionData: result.rows,
           // What they were shown and whether they ticked the box, kept as the record of consent.
           consent: { given: consentGiven, statement: consentStatement(form), at: now.toISOString() },
@@ -199,13 +207,43 @@ export const formSubmitEndpoint: Endpoint = {
         overrideAccess: true,
       });
     } catch (err) {
-      req.payload.logger.error({ err, msg: "Saving a form submission failed" });
-      return json({ message: "Something went wrong saving that. Please try again." }, 500);
+      // The unique index on (form, dedupe key) is what makes this safe when the same person double-clicks or two requests race.
+      if (!(dedupeKey && isDuplicateError(err))) {
+        req.payload.logger.error({ err, msg: "Saving a form submission failed" });
+        return json({ message: "Something went wrong saving that. Please try again." }, 500);
+      }
     }
 
     if (form.confirmationType === "redirect" && form.redirect?.url) {
       return json({ ok: true, confirmationType: "redirect", redirect: form.redirect.url });
     }
     return json({ ok: true, confirmationType: "message", message: await richTextToHtml(form.confirmationMessage) });
+  },
+};
+
+// The live signature count for a progress bar. A form shows it only when its owner switched "Show the count" on. The number is cached
+// for a few seconds in this process and sent with a short public cache header, so a page that is loaded by thousands of people at once
+// costs the database one count query every few seconds, not one per visitor.
+const COUNT_TTL_MS = 10_000;
+const countCache = new TtlCache<{ count: number; goal: number | null }>(COUNT_TTL_MS);
+const countLimiter = new RateLimiter([{ windowMs: 60_000, max: 120 }]);
+
+export const formCountEndpoint: Endpoint = {
+  path: "/form-intake/:id/count",
+  method: "get",
+  handler: async (req) => {
+    if (!countLimiter.allow(clientAddress(req.headers))) return json({ message: "Too many requests." }, 429);
+
+    const form = await loadForm(req);
+    if (!form || !form.petition?.showCount) return json({ message: "Not found." }, 404);
+
+    const cacheKey = String(form.id);
+    let body = countCache.get(cacheKey);
+    if (!body) {
+      const { totalDocs } = await req.payload.count({ collection: "form-submissions", where: { form: { equals: form.id } }, overrideAccess: true });
+      body = publicCount(totalDocs, form.petition.countOffset, form.petition.goal);
+      countCache.set(cacheKey, body);
+    }
+    return Response.json(body, { headers: { "Cache-Control": `public, max-age=${COUNT_TTL_MS / 1000}` } });
   },
 };

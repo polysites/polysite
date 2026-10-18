@@ -81,6 +81,15 @@ spreadsheet shows it as text instead of running it as a formula.
 Submissions hold personal information. Give the role that reads them only to people who need
 it, and think about how long you keep what you collect.
 
+## Petitions: one signature per person and a public count
+
+Two settings on a form (under **Petition**) turn an ordinary form into a petition. Both are off by default, so a contact form behaves as before.
+
+- **One signature per person.** With this set to *By email address*, someone who signs twice with the same address (capital letters and spaces don't matter) sees the normal thank-you message but is stored once and counted once. Nobody can use the form to find out whether a given person has signed. The form needs an email field. What is kept is a one-way hash of the address, scoped to this form (the address is already in the submission, so no second copy exists), and it is deleted with the submission. Two people submitting at the same instant can't both be stored: the database refuses the second.
+- **Show the signature count publicly.** The site shows how many people have signed and, if you set a **Goal**, a progress bar toward it. **Starting number** is added to the count, for signatures collected before this form or elsewhere. The number is cached for ten seconds, so a page that thousands of people open at once costs the database one count every few seconds.
+
+The count is the number of stored submissions plus the starting number. Submissions removed by a retention setting or a privacy request lower it; use the starting number if that matters.
+
 ## What is checked
 
 Everything a visitor sends is checked on the server against the form you built, not just in
@@ -154,3 +163,7 @@ A theme draws forms; Polysite does the rest. Use `useFormIntake` for behaviour a
 the Polysite Themes guide. Hidden fields draw nothing, and the bot check is drawn by
 `PolysiteFormFields` itself (`poly-captcha` and `poly-captcha-status`), so a theme that uses it needs no
 changes to support either.
+
+To show a petition's count, render `<PolysiteSignatureCount v-if="intake.signatures" :count="intake.signatures.count" :goal="intake.signatures.goal" />`
+above the fields (the block's `intake` is `useFormIntake()`). It carries the classes `poly-signatures`, `poly-signatures-count`,
+`poly-signatures-bar` and `poly-signatures-fill` and no look of its own.

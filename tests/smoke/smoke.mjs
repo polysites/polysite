@@ -222,6 +222,47 @@ await step("a visitor can submit a form and it is stored", async () => {
   expect(stored.status === 200 && stored.json?.totalDocs === 1, `expected 1 stored submission, got ${stored.json?.totalDocs}`);
 });
 
+await step("a petition stores one signature per person and shows a public count", async () => {
+  const confirmation = { root: { type: "root", children: [{ type: "paragraph", children: [{ type: "text", text: "Thanks", version: 1 }], version: 1 }], direction: "ltr", format: "", indent: 0, version: 1 } };
+  const form = await cms("POST", "/api/forms", {
+    token,
+    body: {
+      title: "Petition",
+      site: 1,
+      fields: [{ blockType: "text", name: "name", label: "Name" }, { blockType: "email", name: "email", label: "Email", required: true }],
+      submitButtonLabel: "Sign",
+      confirmationType: "message",
+      confirmationMessage: confirmation,
+      petition: { dedupe: "email", showCount: true, countOffset: 100, goal: 500 },
+    },
+  });
+  expect(form.status === 201, `creating the petition gave ${form.status}: ${form.text.slice(0, 200)}`);
+  const id = form.json.doc.id;
+  const def = await site("GET", `/api/form-intake/${id}`);
+  expect(def.json?.signatures?.goal === 500, `the form definition should offer the count with its goal, got ${JSON.stringify(def.json?.signatures)}`);
+
+  const token1 = (await site("GET", `/api/form-intake/${id}`)).json.token;
+  const token2 = (await site("GET", `/api/form-intake/${id}`)).json.token;
+  const token3 = (await site("GET", `/api/form-intake/${id}`)).json.token;
+  const token4 = (await site("GET", `/api/form-intake/${id}`)).json.token;
+  await sleep(2500);
+  const sign = (email, t) => site("POST", `/api/form-intake/${id}`, { body: { data: { name: "A Signer", email }, token: t, consent: true } });
+
+  const first = await sign("Pat.Lee@Example.test", token1);
+  expect(first.status === 200 && first.json?.ok, `the first signature gave ${first.status}: ${first.text.slice(0, 200)}`);
+  const again = await sign("  pat.lee@EXAMPLE.test ", token2);
+  expect(again.status === 200 && again.json?.ok, `a repeat signature should look like a success, got ${again.status}: ${again.text.slice(0, 200)}`);
+  // The same new person twice at the same instant: the unique index lets only one through, and neither gets an error.
+  const [raceA, raceB] = await Promise.all([sign("rush@example.test", token3), sign("RUSH@example.test", token4)]);
+  expect(raceA.status === 200 && raceB.status === 200, `a double submit gave ${raceA.status} and ${raceB.status}`);
+
+  const stored = await cms("GET", `/api/form-submissions?depth=0&where[form][equals]=${id}`, { token });
+  expect(stored.json?.totalDocs === 2, `expected 2 stored signatures (pat, rush), got ${stored.json?.totalDocs}`);
+  const count = await site("GET", `/api/form-intake/${id}/count`);
+  expect(count.status === 200 && count.json?.count === 102 && count.json?.goal === 500, `expected a count of 102 with goal 500, got ${count.status} ${count.text.slice(0, 120)}`);
+  expect(/max-age=10/.test(count.headers["cache-control"] ?? ""), `the count should be publicly cacheable for 10 seconds, got "${count.headers["cache-control"]}"`);
+});
+
 await step("the admin screens load", async () => {
   for (const path of ["/admin", "/admin/collections/pages", "/admin/collections/sites/1", "/admin/collections/roles", "/admin/collections/forms", "/admin/collections/media", "/admin/collections/redirects"]) {
     const res = await cms("GET", path, { headers: { Cookie: session } });

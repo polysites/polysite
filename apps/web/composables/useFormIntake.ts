@@ -50,7 +50,17 @@ interface IntakeDefinition {
   token: string;
   /** The form's extra bot check, if it has one. */
   captcha?: { provider: "altcha"; challenge: AltchaChallenge } | { provider: "turnstile"; siteKey: string } | null;
+  /** Present when the form's owner chose to show how many people have signed. */
+  signatures?: { goal: number | null } | null;
 }
+
+export interface SignatureCount {
+  count: number;
+  goal: number | null;
+}
+
+/** How often a page that is already open asks again. The server caches the number for 10 seconds, so this costs the database almost nothing. */
+const SIGNATURE_REFRESH_MS = 30_000;
 
 type FormRef = number | string | { id?: number | string } | null | undefined;
 
@@ -74,6 +84,16 @@ export function useFormIntake(formProp: () => FormRef) {
   const loadFailed = ref(false);
   const submitting = ref(false);
   const done = ref(false);
+  const signatures = ref<SignatureCount | null>(null);
+  let signatureTimer: ReturnType<typeof setInterval> | undefined;
+
+  async function loadSignatures(id: string | number) {
+    try {
+      signatures.value = await $fetch<SignatureCount>(`${api}/form-intake/${id}/count`);
+    } catch {
+      // Keep the last number: a count that fails to refresh is better than an error on the page.
+    }
+  }
 
   // The form's bot check. ALTCHA is solved in the background as soon as the form loads;
   // Turnstile is drawn by FormCaptcha.vue, which hands the token over through setCaptchaToken.
@@ -118,6 +138,10 @@ export function useFormIntake(formProp: () => FormRef) {
       }
       definition.value = def;
       startCaptcha(def);
+      if (def.signatures) {
+        void loadSignatures(def.id);
+        signatureTimer ??= setInterval(() => void loadSignatures(def.id), SIGNATURE_REFRESH_MS);
+      }
     } catch {
       loadFailed.value = true;
     }
@@ -125,6 +149,9 @@ export function useFormIntake(formProp: () => FormRef) {
 
   // Browser only: during server rendering there is no form, just the block's heading.
   onMounted(load);
+  onBeforeUnmount(() => {
+    if (signatureTimer) clearInterval(signatureTimer);
+  });
 
   async function submit() {
     const def = definition.value;
@@ -153,6 +180,7 @@ export function useFormIntake(formProp: () => FormRef) {
       }
       confirmationHtml.value = res.message || "";
       done.value = true;
+      if (def.signatures) void loadSignatures(def.id);
     } catch (err) {
       const data = (err as { data?: { message?: string; errors?: Record<string, string> } }).data;
       errors.value = data?.errors ?? {};
@@ -165,5 +193,5 @@ export function useFormIntake(formProp: () => FormRef) {
   }
 
   // reactive(): a component receiving this as a prop reads plain values, no `.value`.
-  return reactive({ definition, values, honeypot, consent, errors, message, confirmationHtml, loadFailed, submitting, done, submit, captchaStatus, setCaptchaToken });
+  return reactive({ definition, values, honeypot, consent, errors, message, confirmationHtml, loadFailed, submitting, done, submit, captchaStatus, setCaptchaToken, signatures });
 }

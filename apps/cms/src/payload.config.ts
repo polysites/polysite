@@ -25,7 +25,7 @@ import { loadPluginMigrations } from "./plugins/pluginMigrations";
 import { siteSettingsCollections, siteSettingsPlugin } from "./plugins/siteSettings";
 import { migrations as coreMigrations } from "./migrations";
 import { pageUrlFromDoc } from "./utils/pageUrl";
-import { formDefinitionEndpoint, formSubmitEndpoint } from "./forms/endpoints";
+import { formCountEndpoint, formDefinitionEndpoint, formSubmitEndpoint } from "./forms/endpoints";
 import { formExportEndpoint } from "./forms/export";
 import { hiddenFieldBlock } from "./forms/hiddenField";
 import { privacyEraseEndpoint, privacyExportEndpoint, privacyFindEndpoint } from "./privacy/endpoints";
@@ -153,7 +153,7 @@ export default buildConfig({
   collections: [Users, Roles, Sites, Pages, Media, Redirects, PrivacyRequests],
   // POST /api/setup: backs the first-run page (components/Setup). Refuses once a
   // user exists.
-  endpoints: [setupEndpoint, formDefinitionEndpoint, formSubmitEndpoint, formExportEndpoint, privacyFindEndpoint, privacyExportEndpoint, privacyEraseEndpoint],
+  endpoints: [setupEndpoint, formDefinitionEndpoint, formSubmitEndpoint, formCountEndpoint, formExportEndpoint, privacyFindEndpoint, privacyExportEndpoint, privacyEraseEndpoint],
   // Seeds the 3 default roles (idempotent -- only creates what's missing)
   // and loads rbac/permissionCache.ts's in-memory matrix from the `roles`
   // collection, in that order, once at boot. Every hasCapability() check
@@ -307,6 +307,53 @@ export default buildConfig({
             ],
           },
           {
+            // For petitions: one signature per person, and a public count for a progress bar (forms/petition.ts).
+            name: "petition",
+            type: "group",
+            label: "Petition",
+            admin: { description: "Settings for a petition. Leave as they are for an ordinary form such as a contact form." },
+            fields: [
+              {
+                name: "dedupe",
+                type: "select",
+                label: "One signature per person",
+                defaultValue: "none",
+                options: [
+                  { label: "Off: every submission is kept (right for a contact form)", value: "none" },
+                  { label: "By email address: the same address signing again is not stored or counted", value: "email" },
+                ],
+                admin: {
+                  description:
+                    "With this on, someone who signs twice with the same address sees the normal thank-you message but is only recorded once. Needs an email field on the form. What is kept is a one-way hash of the address, not a second copy.",
+                },
+              },
+              {
+                name: "showCount",
+                type: "checkbox",
+                label: "Show the signature count publicly",
+                defaultValue: false,
+                admin: { description: "Lets the site show how many people have signed (a number and, if you set one, a progress bar toward the goal)." },
+              },
+              {
+                name: "countOffset",
+                type: "number",
+                label: "Starting number",
+                min: 0,
+                admin: {
+                  description: "Added to the count: for signatures collected before this form, or elsewhere. Leave empty to count only what is stored here.",
+                  condition: (_data, siblingData) => Boolean(siblingData?.showCount),
+                },
+              },
+              {
+                name: "goal",
+                type: "number",
+                label: "Goal",
+                min: 1,
+                admin: { description: "The number the progress bar fills toward. Leave empty for a plain count.", condition: (_data, siblingData) => Boolean(siblingData?.showCount) },
+              },
+            ],
+          },
+          {
             name: "landingPage",
             type: "relationship",
             relationTo: "pages",
@@ -357,6 +404,9 @@ export default buildConfig({
         ],
       },
       formSubmissionOverrides: {
+        // One row per (form, person) when a form de-duplicates: the database refuses a second one, so two requests racing cannot both
+        // be stored. Rows with no key (forms that do not de-duplicate) are never in conflict.
+        indexes: [{ fields: ["form", "dedupeKey"], unique: true }],
         admin: {
           // Reached from each form (its Submissions column and summary), not from the sidebar.
           // `group: false` drops the sidebar and dashboard entries but keeps the pages; `hidden: true`
@@ -381,6 +431,12 @@ export default buildConfig({
               { name: "statement", type: "textarea", admin: { description: "The wording they were shown." } },
               { name: "at", type: "date", admin: { date: { pickerAppearance: "dayAndTime" } } },
             ],
+          },
+          {
+            // A keyed hash of the signer's email address (forms/petition.ts), set only on forms that ask for one signature per person.
+            name: "dedupeKey",
+            type: "text",
+            admin: { hidden: true, readOnly: true },
           },
           {
             name: "expiresAt",

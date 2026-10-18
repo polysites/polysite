@@ -13,6 +13,7 @@ const intake = useFormIntake(() => props.form);
   <section class="px-4 py-12 sm:px-8">
     <div class="poly-form-defaults mx-auto max-w-2xl">
       <h2 v-if="heading" class="mb-6 text-3xl font-bold tracking-tight text-neutral-900">{{ heading }}</h2>
+      <PolysiteSignatureCount v-if="intake.signatures" :count="intake.signatures.count" :goal="intake.signatures.goal" />
       <PolysiteFormFields v-if="formIdOf(form)" :intake="intake" />
     </div>
   </section>

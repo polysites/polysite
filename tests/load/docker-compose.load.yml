@@ -1,0 +1,11 @@
+# Overrides for the load test (tests/load/run.sh): a small server's share of a machine, and nothing published on the host.
+services:
+  caddy:
+    ports: !reset []
+  db:
+    ports: !reset []
+    cpus: 1.0
+    mem_limit: 512m
+  cms:
+    cpus: 1.0
+    mem_limit: 1g
