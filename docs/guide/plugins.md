@@ -25,6 +25,7 @@ it doesn't do. The core's guides don't repeat them.
 | `share` | per-site | Share buttons for the page a visitor is on. See [Share buttons](/guide/share-buttons) |
 | `webhooks` | global | Signed JSON messages to other systems when pages, posts, forms or media change, with retries, a delivery log and replay. Super Admins only |
 | `ai-assist` | global | Suggestions inside the admin: rewrite text, search title and description, alt text, translation, a draft page from a brief. Off until a Super Admin switches it on; nothing publishes |
+| `mcp` | global | Lets AI agents such as Claude work on the install over MCP: build pages and forms, upload images. A key acts as the person it belongs to, so that person's role decides what the agent can do |
 | `onboarding` | global | A "Get your site ready" checklist on the admin dashboard: logo, menu, first page, form, domain, editor, backups. Ticks itself where it can, dismissible, remembered per site |
 | `wordpress-import` | global | Imports a WordPress export file (pages, posts, images, menu, redirects) into one site, with a dry run first |
 

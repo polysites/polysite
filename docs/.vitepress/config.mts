@@ -70,6 +70,7 @@ export default defineConfig({
           { text: "Getting started", link: "/guide/getting-started" },
           { text: "Requirements", link: "/guide/requirements" },
           { text: "What Polysite does", link: "/guide/features" },
+          { text: "How it works", link: "/guide/how-it-works" },
           { text: "Plugins", link: "/guide/plugins" },
           { text: "Themes", link: "/guide/themes" },
           { text: "Example sites", link: "/guide/examples" },

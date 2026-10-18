@@ -70,7 +70,8 @@ served with a cache header so repeat visits don't re-download them.
 A dynamic form builder for petitions, sign-ups and contact forms. Each form shows its own
 submissions, which are read-only, with a CSV export. Submissions are checked on the server against the form, protected by a
 hidden trap field, a signed token and a rate limit, and only the site's own team can
-read them. See [Forms and sign-ups](/guide/forms).
+read them. A form can also count as a petition: one signature per email address, and a public signature count
+with an optional goal. See [Forms and sign-ups](/guide/forms).
 
 ### Themes and branding
 
@@ -81,7 +82,7 @@ social links are edited per site. See [themes](/guide/themes).
 
 Optional capabilities live outside the core and are added by dropping in a folder: news and articles, email,
 analytics, notifications, sign-in security (single sign-on, two-factor, API keys), several languages per site,
-visitor search, share buttons, signed webhooks and a WordPress importer. Each keeps its data in its own tables, and
+visitor search, share buttons, signed webhooks, a WordPress importer, AI agents over MCP, an AI writing assistant and a setup checklist. Each keeps its data in its own tables, and
 removing or switching one off never deletes what its users created. Polysite runs without any. See
 [plugins](/guide/plugins).
 
