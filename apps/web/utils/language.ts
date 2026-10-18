@@ -15,6 +15,8 @@ export interface LanguageSetup {
   default: string;
   /** Every language the site offers, the default included, default first. */
   languages: string[];
+  /** Languages the site has set to preview only: written by editors, not served to visitors. Only present when there are some. */
+  preview?: string[];
 }
 
 export const SYSTEM_DEFAULT = "en";
@@ -37,17 +39,22 @@ export function nameOf(code: string): string {
 }
 
 /**
- * What a site says it offers: the core contract `site.extensions.languages` (`{ languages, defaultLanguage }`), which any plugin that
- * keeps per-site settings may supply (the i18n plugin does). A site with nothing set offers English only.
+ * What a site says it offers: the core contract `site.extensions.languages` (`{ languages, defaultLanguage, previewLanguages }`), which any
+ * plugin that keeps per-site settings may supply (the i18n plugin does). A site with nothing set offers English only. A language in
+ * `previewLanguages` is written by editors but is not an address visitors can reach (no prefix, no switcher, no hreflang, no sitemap
+ * entry); `allowed` makes some of them reachable for one request (a signed preview link, see utils/previewLanguage.ts). The default
+ * language is never preview-only.
  */
-export function languagesOf(site: Pick<PayloadSite, "extensions"> | null | undefined): LanguageSetup {
+export function languagesOf(site: Pick<PayloadSite, "extensions"> | null | undefined, allowed: readonly string[] = []): LanguageSetup {
   const choice = site?.extensions?.languages;
-  const raw = choice?.languages;
-  const listed = Array.isArray(raw) ? raw.filter((c): c is string => typeof c === "string" && c.length > 0) : [];
+  const strings = (raw: unknown): string[] => (Array.isArray(raw) ? raw.filter((c): c is string => typeof c === "string" && c.length > 0) : []);
+  const listed = strings(choice?.languages);
   if (listed.length === 0) return SINGLE_LANGUAGE;
   const wanted = typeof choice?.defaultLanguage === "string" ? choice.defaultLanguage : "";
   const def = listed.includes(wanted) ? wanted : listed[0]!;
-  return { default: def, languages: [def, ...listed.filter((c) => c !== def)] };
+  const hidden = strings(choice?.previewLanguages).filter((c) => c !== def && listed.includes(c) && !allowed.includes(c));
+  const setup: LanguageSetup = { default: def, languages: [def, ...listed.filter((c) => c !== def && !hidden.includes(c))] };
+  return hidden.length ? { ...setup, preview: hidden } : setup;
 }
 
 /**
@@ -79,4 +86,15 @@ export function withLanguage(href: string, code: string, setup: LanguageSetup): 
 /** The Payload query that asks for a language and falls back to the site's default. */
 export function languageQuery(code: string, setup: LanguageSetup): Record<string, string> {
   return { locale: code, "fallback-locale": setup.default };
+}
+
+/**
+ * The address of a page or item in a language, language prefix included. `base` is its shared address (the default language's, from the
+ * URL index's `path`), `localized` the index's per-language addresses (`localizedPath` read with locale=all): a language whose entry
+ * differs from the shared one has an address of its own (/fr/a-propos). Without one, the shared address is used under the prefix.
+ */
+export function addressInLanguage(base: string, localized: Record<string, string | null | undefined> | string | null | undefined, code: string, setup: LanguageSetup): string {
+  const own = code !== setup.default && localized && typeof localized === "object" ? localized[code] : undefined;
+  const path = own || base;
+  return withLanguage(path.startsWith("/") ? path : `/${path}`, code, setup);
 }

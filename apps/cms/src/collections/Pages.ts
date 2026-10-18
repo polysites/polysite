@@ -4,6 +4,8 @@ import { trace } from "@opentelemetry/api";
 import { hasCapability, isSuperAdmin, userSiteIds } from "../access/roles";
 import { nextFreeCopySlug, normalizeSlug } from "../utils/slug";
 import { localizeNamed } from "../i18n/localize";
+import { languagesFor } from "../i18n/registry";
+import { normalizeTranslatedSlug, translatedRedirectFrom, translatedSlugProblem } from "../i18n/translatedSlug";
 import { uniquePerSite } from "../utils/uniquePerSite";
 import { reviewFields } from "../workflow/fields";
 import { liveBefore, publishAware, publishRules } from "../workflow/hooks";
@@ -203,6 +205,43 @@ const pagesBase: CollectionConfig = {
       },
     },
     {
+      // The page's own address in another language (/fr/a-propos for the French /about). Empty means the shared Address above, as
+      // before. A localized column of its own: nothing is moved, and the shared slug stays the page's identity (i18n/translatedSlug.ts).
+      name: "translatedSlug",
+      type: "text",
+      localized: true,
+      label: "Address in this language",
+      custom: { polysite: { noTranslate: true } },
+      hooks: { beforeValidate: [({ value }) => (typeof value === "string" ? normalizeTranslatedSlug(value) : value)] },
+      validate: async (value: string | null | undefined, { data, id, req }: { data: Record<string, unknown>; id?: number | string; req: PayloadRequest }) => {
+        if (!value) return true;
+        const ref = data?.site;
+        const siteId = ref && typeof ref === "object" ? (ref as { id?: unknown }).id : ref;
+        const offered = await languagesFor(siteId, req);
+        const problem = translatedSlugProblem(value, req.locale ?? undefined, offered);
+        if (problem) return problem;
+        const same = (extra: Where) =>
+          req.payload.find({
+            collection: "pages",
+            where: { and: [{ site: { equals: siteId } }, ...(id ? [{ id: { not_equals: id } } as Where] : []), extra] },
+            limit: 1,
+            depth: 0,
+            overrideAccess: true,
+            locale: req.locale as never,
+            fallbackLocale: false,
+            req,
+          });
+        // Taken by another page's own address in this language, or by another page's shared address (which that page still answers to).
+        if ((await same({ translatedSlug: { equals: value } })).totalDocs > 0) return `Another page on this site already uses "${value}" in this language.`;
+        if ((await same({ slug: { equals: value } })).totalDocs > 0) return `Another page on this site already uses "${value}" as its address.`;
+        return true;
+      },
+      admin: {
+        description:
+          "Optional. The page's address in this language, for example a-propos in French, so the page is at /fr/a-propos. Leave empty to keep the shared Address above. The old address keeps working: visitors are sent on to the new one. Not used for the site's default language.",
+      },
+    },
+    {
       // Computed, not stored: the site's domain + this page's slug. A typed
       // value would duplicate those two, go stale on every slug change, and
       // (as `required`) hang the dev schema push on existing rows.
@@ -297,11 +336,21 @@ const pagesBase: CollectionConfig = {
         if (operation !== "update") return;
         // The address that needs a redirect is the old LIVE one, and only when this save changes what is live: a draft with
         // a new slug changes nothing for visitors yet, and the previous draft may already carry the new slug.
-        const oldSlug = slugToRedirectFrom({
-          isDraftSave: isDraftRequest(req.query),
-          liveSlugBefore: liveBefore(req)?.slug,
-          slugAfter: doc.slug,
-        });
+        const oldSlug =
+          slugToRedirectFrom({
+            isDraftSave: isDraftRequest(req.query),
+            liveSlugBefore: liveBefore(req)?.slug,
+            slugAfter: doc.slug,
+          }) ??
+          // A translated address that changed or was cleared in this language: the old one is redirected, with its language in front.
+          (!isDraftRequest(req.query) && req.locale
+            ? translatedRedirectFrom(
+                req.locale,
+                (await languagesFor(typeof doc.site === "object" ? doc.site?.id : doc.site, req))[0] ?? "en",
+                liveBefore(req)?.translatedSlug,
+                typeof doc.translatedSlug === "string" ? doc.translatedSlug : undefined,
+              )
+            : null);
         if (!oldSlug) return;
 
         const siteId = typeof doc.site === "object" ? doc.site?.id : doc.site;

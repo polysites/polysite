@@ -17,7 +17,23 @@ Open a page or post, choose the language at the top of the screen, and write. An
 
 **Publishing publishes every language together.** Saving a draft saves it in the language you are working in; the versions tab holds every language.
 
-What stays the same in every language: the address of the page, its pictures and links, and the order of its blocks. If a language needs a different layout, that isn't possible yet.
+What stays the same in every language: its pictures and links, and the order of its blocks. If a language needs a different layout, that isn't possible yet.
+
+### A page's address in each language
+
+Below the page's **Address** there is **Address in this language**. With French selected, typing `a-propos` makes the page `/fr/a-propos`; leaving it empty keeps `/fr/about`. Letters of any script work (`/ar/من-نحن`). The old address keeps working: visitors who arrive at `/fr/about` are sent on to `/fr/a-propos`, and if you later change the French address the old one is redirected too. The language switcher, the search-engine links and the sitemap all use each language's own address. News posts keep one address under every language for now, and links you typed inside text or menus stay as typed (a link to an old address is redirected).
+
+## Putting a language live
+
+A language can be written and checked before anyone can see it. On **Site languages**, tick it under **Preview only (not live yet)**: visitors get no pages, no switcher entry and no search-engine links for it, while editors keep writing in it. Open **Live Preview** with that language selected to see the page (the address it opens is a signed, temporary link that is never stored or indexed). Untick it to put the language live.
+
+## Machine translation
+
+If your administrator has set up a translation service and switched **Machine translation helper** on for the site, pages and posts get a **Translate** button: choose the language, press it, and the text of that page is translated from the default language and saved as a **draft**. What you already translated is never overwritten. The language is marked (`fr*`) as machine-translated, and **the page cannot be published until you have read it and chosen "Mark fr as reviewed"**. Only the text of that one page is sent to the service. Setting it up (provider, key) is in the plugin's README; privacy notes are in the privacy guide.
+
+## Right-to-left languages
+
+Arabic, Hebrew, Persian, Urdu and the other right-to-left languages turn the whole page around (`dir="rtl"`), on the core's own pages and on themes built the way the starter theme is. A theme that was written with left/right in its styles needs a small fix; the theme guide says how.
 
 ## What search engines see
 

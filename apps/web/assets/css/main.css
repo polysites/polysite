@@ -58,3 +58,7 @@ h1, h2, h3, h4 {
 .poly-signatures-bar { height: 0.6rem; border-radius: 999px; background: #e5e5e5; overflow: hidden; }
 .poly-signatures-fill { display: block; height: 100%; border-radius: 999px; background: var(--brand-primary, #2563eb); transition: width 0.6s ease; }
 @media (prefers-reduced-motion: reduce) { .poly-signatures-fill { transition: none; } }
+
+/* Right-to-left languages: <html dir="rtl"> flips layout on its own wherever a stylesheet uses logical properties
+ * (margin-inline-start, inset-inline-end, text-align: start). A directional arrow is a character, so it needs flipping by hand. */
+[dir="rtl"] .poly-arrow { display: inline-block; transform: scaleX(-1); }

@@ -76,6 +76,7 @@ until docker logs "${PROJECT}-mock-oidc" 2>&1 | grep -q "mock OIDC provider on";
 done
 fi
 
+REVALIDATE_SECRET=$(sed -n 's/^REVALIDATE_SECRET=//p' "$WORK/.env" | head -1)
 failed=0
 run_check() { # name, working directory (mounted at /w), script
   [ -d "$2" ] || { echo "== $1 (skipped: not installed)"; return 0; }
@@ -83,7 +84,7 @@ run_check() { # name, working directory (mounted at /w), script
   if MSYS_NO_PATHCONV=1 docker run --rm --network "$NETWORK" -v "$2:/w:ro" -w /w \
     -e BASE=http://cms:3001 -e WEB=http://web:3000 -e MOCK=http://mock-oidc:9000 \
     -e ADMIN_EMAIL=admin@dev.local -e ADMIN_PASSWORD="$SEED_PASSWORD" -e SITE_ID=1 -e SITE_HOST=voidslate.localhost \
-    -e OTHER_SITE_ID=2 -e OTHER_HOST=second.localhost \
+    -e OTHER_SITE_ID=2 -e OTHER_HOST=second.localhost -e REVALIDATE_SECRET="$REVALIDATE_SECRET" \
     node:22 node "$3"; then :; else failed=1; echo "$1: FAILED"; fi
 }
 
@@ -91,6 +92,7 @@ run_check "content workflow" "$E2E_ABS" workflow.e2e.mjs
 run_check "translatable content" "$E2E_ABS" i18n.e2e.mjs
 run_check "access rules (security review)" "$E2E_ABS" security.e2e.mjs
 [ -d "$PLUGINS_ABS/i18n" ] && run_check "a site in two languages" "$E2E_ABS" multilang.e2e.mjs
+[ -d "$PLUGINS_ABS/i18n" ] && run_check "translation extras (preview-only languages, translated addresses, machine translation)" "$E2E_ABS" multilang-extras.e2e.mjs
 run_check "two-factor sign-in" "$PLUGINS_ABS/auth" test/e2e/two-factor.e2e.mjs
 run_check "single sign-on" "$PLUGINS_ABS/auth" test/e2e/sso.e2e.mjs
 run_check "site search" "$PLUGINS_ABS/search" test/e2e/search.e2e.mjs

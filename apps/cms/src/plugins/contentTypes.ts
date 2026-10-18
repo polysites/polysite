@@ -25,9 +25,9 @@ export interface RoutableDeclaration {
   /** What the URL manager calls this kind of item, like "post". */
   docType: string;
   /** The item's address within its site, without a leading slash (like "news/budget-day"). */
-  urlPath: (doc: Record<string, unknown>, ctx: { payload: Payload; site: Record<string, unknown> | null }) => string | Promise<string>;
+  urlPath: (doc: Record<string, unknown>, ctx: { payload: Payload; site: Record<string, unknown> | null; locale?: string }) => string | Promise<string>;
   /** The full public URL, used by Live Preview. */
-  previewUrl: (doc: Record<string, unknown>, req: PayloadRequest | undefined) => string | Promise<string>;
+  previewUrl: (doc: Record<string, unknown>, req: PayloadRequest | undefined, locale?: string | null) => string | Promise<string>;
   /** Defaults to true. */
   seo?: boolean;
   /** Defaults to true. */

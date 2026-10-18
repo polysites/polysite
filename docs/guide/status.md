@@ -19,8 +19,10 @@ notifications have unit tests only. The security review's fixes have a regressio
 - The release and deploy scripts (`deploy/deploy.sh` and the release workflow) are new and have not yet been used
   for a real release or deploy; [Releases and versions](/guide/releasing) and [Deploying](/guide/deploying)
   describe them. Treat the first real release and deploy as their test.
-- The `polysite` command-line tool (aliases `polysites` and `poly`) is in preview in a separate
-  repository. It is not released and has not been run against a real stack.
+- The `polysite` command-line tool (aliases `polysites` and `poly`) is an early preview in a separate
+  repository, published on npm as `@polysite/cli`. It has been run against real stacks on Linux (install,
+  backup and restore, an upgrade between two releases, plugins, off-site backups, HTTPS) but not yet on a
+  production server with a real domain or on macOS, so try it on a throwaway server first.
 
 ## Not built yet
 

@@ -30,7 +30,8 @@ import { formExportEndpoint } from "./forms/export";
 import { hiddenFieldBlock } from "./forms/hiddenField";
 import { privacyEraseEndpoint, privacyExportEndpoint, privacyFindEndpoint } from "./privacy/endpoints";
 import { DEFAULT_LANGUAGE, payloadLocales } from "./i18n/catalog";
-import { rememberPayload, skipsLanguage, translatedLanguages } from "./i18n/registry";
+import { languagesFor, rememberPayload, skipsLanguage, translatedLanguages } from "./i18n/registry";
+import { addressIn } from "./i18n/translatedSlug";
 import { startJobRunner } from "./jobs/runner";
 import { backfillVersions } from "./workflow/backfill";
 import { startRetentionPurge } from "./privacy/retention";
@@ -144,9 +145,9 @@ export default buildConfig({
       // site's page previews on its own host, not SITE_DOMAIN.
       // Live Preview only shows on the collections named here; without this no document gets the tab.
       collections: ["pages"],
-      url: ({ data, req, collectionConfig }) => {
-        const routable = (collectionConfig?.custom as { polysite?: { routable?: { previewUrl: (d: unknown, r: unknown) => string | Promise<string> } } } | undefined)?.polysite?.routable;
-        return routable ? routable.previewUrl(data, req) : pageUrlFromDoc(data, req);
+      url: ({ data, req, collectionConfig, locale }) => {
+        const routable = (collectionConfig?.custom as { polysite?: { routable?: { previewUrl: (d: unknown, r: unknown, l?: string | null) => string | Promise<string> } } } | undefined)?.polysite?.routable;
+        return routable ? routable.previewUrl(data, req, locale?.code) : pageUrlFromDoc(data, req, locale?.code);
       },
     },
   },
@@ -516,12 +517,19 @@ export default buildConfig({
         }
         const routable = routableOf(payload.config, collectionSlug);
         let path: string = collectionSlug === "pages" ? originalDoc.slug : originalDoc.fromPath;
+        // `path` is the shared address (the site's default language); `localizedPath` is the address in the language being synced,
+        // which differs only when the page or item has its own address there (i18n/translatedSlug.ts).
+        let localizedPath: string = path;
+        const siteRef = originalDoc.site;
+        const syncSiteId = siteRef && typeof siteRef === "object" ? siteRef.id : siteRef;
+        const defaultLanguage = (await languagesFor(syncSiteId, req))[0] ?? DEFAULT_LANGUAGE;
+        if (collectionSlug === "pages") localizedPath = addressIn(originalDoc, syncLocale, defaultLanguage);
         if (routable) {
           // A content-type plugin says what its items' addresses are (they can depend on the site's settings).
-          const ref = originalDoc.site;
-          const siteId = ref && typeof ref === "object" ? ref.id : ref;
-          const site = siteId ? await payload.findByID({ collection: "sites", id: siteId, depth: 0, overrideAccess: true }).catch(() => null) : null;
-          path = await routable.urlPath(originalDoc, { payload, site: site as Record<string, unknown> | null });
+          const site = syncSiteId ? await payload.findByID({ collection: "sites", id: syncSiteId, depth: 0, overrideAccess: true }).catch(() => null) : null;
+          const ctx = { payload, site: site as Record<string, unknown> | null };
+          path = await routable.urlPath(originalDoc, ctx);
+          localizedPath = syncLocale && syncLocale !== defaultLanguage ? await routable.urlPath(originalDoc, { ...ctx, locale: syncLocale }) : path;
         }
         // Which languages this document has text in, for the sitemap, the language switcher and hreflang. Read from the "all
         // languages" form of the live document; documents without a title (redirects) have none.
@@ -540,6 +548,7 @@ export default buildConfig({
           title: originalDoc.title ?? searchDoc.title,
           site: originalDoc.site,
           path,
+          localizedPath,
           docType: collectionSlug === "pages" ? "page" : routable ? routable.docType : "redirect",
           status: collectionSlug === "redirects" ? (originalDoc.enabled ? "active" : "disabled") : (originalDoc._status ?? originalDoc.status),
         };
@@ -562,6 +571,9 @@ export default buildConfig({
         fields: ({ defaultFields }) => [
           ...defaultFields,
           { name: "path", type: "text" },
+          // The address in each language (its own when the page has a translated address there, else the same as `path`). The public
+          // site finds a page by it under /fr/..., and the switcher, hreflang and the sitemap read every language's address from it.
+          { name: "localizedPath", type: "text", localized: true, admin: { readOnly: true } },
           // Plain text, not a select: a select is a Postgres enum, and an installed content-type plugin would have to add its
           // type to this core table. The values are "page", "redirect" and what each routable collection declares.
           { name: "docType", type: "text", index: true },

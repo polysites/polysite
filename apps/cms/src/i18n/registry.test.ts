@@ -1,7 +1,7 @@
 import type { Payload } from "payload";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { languagesFor, offeredBy, rememberPayload, skipsLanguage, translatedLanguages } from "./registry";
+import { languagesFor, offeredBy, previewLanguagesOf, rememberPayload, skipsLanguage, translatedLanguages } from "./registry";
 
 // A Payload whose `sites` collection answers with the documents given, each carrying (or not) the `extensions.languages` contract.
 const payloadWith = (sites: Record<string, unknown>, calls: string[] = []) =>
@@ -70,5 +70,16 @@ describe("which languages a document has text in", () => {
 
   it("is empty for anything that is not a per-language title", () => {
     for (const value of [undefined, null, "Hello", 3, []]) expect(translatedLanguages(value)).toEqual([]);
+  });
+});
+
+describe("languages set to preview only", () => {
+  it("lists the offered languages other than the default that the site has hidden from visitors", () => {
+    const setting = { languages: ["en", "fr", "ar"], defaultLanguage: "en", previewLanguages: ["ar", "en", "de", 3] };
+    expect(previewLanguagesOf(setting)).toEqual(["ar"]);
+    expect(previewLanguagesOf({ languages: ["en", "fr"] })).toEqual([]);
+    expect(previewLanguagesOf(undefined)).toEqual([]);
+    // the offer itself is unchanged: editors can still write every language
+    expect(offeredBy(setting)).toEqual(["en", "fr", "ar"]);
   });
 });

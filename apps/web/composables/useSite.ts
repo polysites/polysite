@@ -1,5 +1,6 @@
 import type { PayloadSite } from "../types/payload";
 import { languagesOf, SYSTEM_DEFAULT, splitLanguage } from "../utils/language";
+import { PREVIEW_PARAM, verifyPreview } from "../utils/previewLanguage";
 
 // Site-level branding (logo, favicon, colors, header nav, footer columns,
 // social links) -- lives on the Sites collection (apps/cms/src/collections/
@@ -16,6 +17,9 @@ export async function useSite() {
   const route = useRoute();
   // Composables must be called before the first await: after it Nuxt no longer knows which request this is.
   const languageSetup = useLanguageSetup();
+  // A language the site has set to "preview only" is reachable through a signed link (?_pl=...) made by the CMS. The check happens on the
+  // server, once; the result rides along in the page payload so the browser agrees with it after hydration.
+  const previewLanguages = useState<string[]>("polysite-preview-languages", () => []);
   const base = import.meta.server ? config.apiBaseInternal : config.public.apiBase;
   const hostname = useRequestURL().hostname;
 
@@ -37,7 +41,18 @@ export async function useSite() {
 
   const { data: first } = await fetchSite(`site-${hostname}`);
 
-  const setup = languagesOf(first.value);
+  if (import.meta.server && route.query[PREVIEW_PARAM] !== undefined) {
+    const opened = await verifyPreview(config.revalidateSecret as string, hostname, route.query[PREVIEW_PARAM], Date.now());
+    if (opened) {
+      previewLanguages.value = [opened];
+      // Never stored by the page cache, never indexed.
+      nuxtApp.runWithContext(() => {
+        useResponseHeader("Cache-Control").value = "private, no-store";
+        useHead({ meta: [{ name: "robots", content: "noindex, nofollow" }] });
+      });
+    }
+  }
+  const setup = languagesOf(first.value, previewLanguages.value);
   languageSetup.value = setup;
   const { code } = splitLanguage(route.path, setup);
   if (code === SYSTEM_DEFAULT) return first;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { directionOf, isRtl, languageQuery, languagesOf, nameOf, SINGLE_LANGUAGE, splitLanguage, withLanguage } from "./language";
+import { addressInLanguage, directionOf, isRtl, languageQuery, languagesOf, nameOf, SINGLE_LANGUAGE, splitLanguage, withLanguage } from "./language";
 
 // A site as the CMS returns it: the language choice is the `languages` extension (supplied by a plugin; the core only reads it).
 const siteWith = (languages: unknown, defaultLanguage?: unknown) => ({ extensions: { languages: { languages, defaultLanguage } } }) as never;
@@ -82,5 +82,52 @@ describe("direction, names and queries", () => {
 
   it("asks Payload for the language and falls back to the site's default", () => {
     expect(languageQuery("fr", setup)).toEqual({ locale: "fr", "fallback-locale": "en" });
+  });
+});
+
+describe("languages set to preview only", () => {
+  const withPreview = (languages: string[], previewLanguages: unknown, defaultLanguage = "en") => ({ extensions: { languages: { languages, defaultLanguage, previewLanguages } } }) as never;
+
+  it("serves visitors only the live languages and remembers the hidden ones", () => {
+    const s = languagesOf(withPreview(["en", "fr", "ar"], ["ar"]));
+    expect(s).toEqual({ default: "en", languages: ["en", "fr"], preview: ["ar"] });
+    expect(splitLanguage("/ar/about", s)).toEqual({ code: "en", rest: "ar/about" });
+    expect(splitLanguage("/fr/about", s)).toEqual({ code: "fr", rest: "about" });
+  });
+
+  it("lets a signed link open one hidden language for that request", () => {
+    const s = languagesOf(withPreview(["en", "fr", "ar"], ["fr", "ar"]), ["ar"]);
+    expect(s.languages).toEqual(["en", "ar"]);
+    expect(s.preview).toEqual(["fr"]);
+  });
+
+  it("never hides the default, ignores unlisted or malformed entries, and changes nothing when none are hidden", () => {
+    expect(languagesOf(withPreview(["fr", "en"], ["fr"], "fr"))).toEqual({ default: "fr", languages: ["fr", "en"] });
+    expect(languagesOf(withPreview(["en", "fr"], ["de", 4, ""]))).toEqual({ default: "en", languages: ["en", "fr"] });
+    expect(languagesOf(withPreview(["en", "fr"], "fr"))).toEqual({ default: "en", languages: ["en", "fr"] });
+  });
+});
+
+describe("the address of a page in a language", () => {
+  const s = languagesOf(siteWith(["en", "fr", "ar"], "en"));
+
+  it("uses the page's own address in a language that has one, and the shared address otherwise", () => {
+    const localized = { en: "about", fr: "a-propos", ar: "about" };
+    expect(addressInLanguage("about", localized, "en", s)).toBe("/about");
+    expect(addressInLanguage("about", localized, "fr", s)).toBe("/fr/a-propos");
+    expect(addressInLanguage("about", localized, "ar", s)).toBe("/ar/about");
+    expect(addressInLanguage("/about", { fr: null }, "fr", s)).toBe("/fr/about");
+    expect(addressInLanguage("about", undefined, "fr", s)).toBe("/fr/about");
+    expect(addressInLanguage("about", "not-an-object", "fr", s)).toBe("/fr/about");
+  });
+
+  it("keeps the home page at the language's root, and never prefixes the default language", () => {
+    expect(addressInLanguage("/", { fr: "/" }, "fr", s)).toBe("/fr");
+    expect(addressInLanguage("/", {}, "en", s)).toBe("/");
+    expect(addressInLanguage("about", { en: "other" }, "en", s)).toBe("/about");
+  });
+
+  it("keeps a native-script address as it is", () => {
+    expect(addressInLanguage("about", { ar: "من-نحن" }, "ar", s)).toBe("/ar/من-نحن");
   });
 });

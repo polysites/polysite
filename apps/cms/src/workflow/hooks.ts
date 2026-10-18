@@ -9,6 +9,8 @@ import { capabilityNeeded, clearsReview, isDraftRequest, type Status } from "./r
 export interface LiveBefore {
   status: Status | undefined;
   slug: string | undefined;
+  /** The live version's translated address in the language being saved (empty when it has none). */
+  translatedSlug?: string | undefined;
 }
 
 const KEY = "polysiteLiveBefore";
@@ -31,7 +33,7 @@ export function publishRules(collection: string, module: string): CollectionBefo
         .catch(() => null)) as Record<string, unknown> | null;
     }
     const liveStatus = (live?._status as Status | undefined) ?? undefined;
-    (req.context as Record<string, unknown>)[KEY] = { status: liveStatus, slug: live?.slug as string | undefined } satisfies LiveBefore;
+    (req.context as Record<string, unknown>)[KEY] = { status: liveStatus, slug: live?.slug as string | undefined, translatedSlug: (live?.translatedSlug as string | null | undefined) || undefined } satisfies LiveBefore;
 
     // Publishing finishes a review (also when the system publishes on a schedule).
     const requestedStatus = (data as { _status?: Status })?._status;

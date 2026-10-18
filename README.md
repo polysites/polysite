@@ -262,9 +262,12 @@ backup every night, and `docs/guide/backups.md` covers the off-site copy and how
 restore.
 
 A command-line tool, `polysite` (also installed as `polysites` and `poly`), is in
-preview in its own repository: it wraps install, backup, restore and upgrade. It is
-not released, and has not yet been verified against a real stack, so use the steps
-above for now.
+early preview in [its own repository](https://github.com/polysites/polysite-cli) and on
+npm (`npm install --global @polysite/cli`): it wraps install, backup, restore, upgrade
+and the plugin, user and site commands. It has been run against real stacks on Linux
+(install, backup and restore, an upgrade between two releases, plugins, off-site
+backups, HTTPS), but not yet on a production server with a real domain, so try it on a
+throwaway server first and use the steps above for production.
 
 ## Status
 

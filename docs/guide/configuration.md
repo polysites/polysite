@@ -84,6 +84,7 @@ Plugin settings worth knowing: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS
 `AUTH_API_KEYS`, `AUTH_MAX_LOGIN_ATTEMPTS`, `AUTH_LOCK_MINUTES` (auth); `AUTH_TURNSTILE_SITE_KEY` and `AUTH_TURNSTILE_SECRET_KEY` (auth: switch the
 Cloudflare Turnstile check on the sign-in page on, and win over the keys saved in the admin) and `AUTH_CAPTCHA_OFF=1` (auth: the emergency switch
 that turns that check off when nobody can sign in; see [Security](/guide/security)); `POLYSITE_SEARCH_RATE_LIMIT` (search);
+`POLYSITE_TRANSLATE_PROVIDER`, `POLYSITE_TRANSLATE_API_KEY`, `POLYSITE_TRANSLATE_URL`, `POLYSITE_TRANSLATE_MODEL`, `POLYSITE_TRANSLATE_MAX_CHARS` (the machine-translation helper of the languages plugin, off unless a provider is set and a site switches it on; the key stays in the environment, never in the database);
 `WEBHOOKS_MAX_ATTEMPTS`, `WEBHOOKS_RETRY_DELAY_MS`, `WEBHOOKS_DISABLE_AFTER`, `WEBHOOKS_TIMEOUT_MS`, `WEBHOOKS_LOG_DAYS` (webhooks);
 `WORDPRESS_IMPORT_MAX_MB` (wordpress-import). `NOTIFY_ALLOW_PRIVATE_HOSTS`, `WEBHOOKS_ALLOW_PRIVATE_HOSTS`,
 `WORDPRESS_IMPORT_ALLOW_PRIVATE_HOSTS` and `AUTH_SSO_ALLOW_HTTP` exist for tests and let a plugin reach private addresses or plain

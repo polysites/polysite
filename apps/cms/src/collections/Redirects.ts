@@ -1,7 +1,7 @@
 import type { Access, CollectionConfig, Validate, Where } from "payload";
 
 import { hasCapability } from "../access/roles";
-import { normalizeSlug } from "../utils/slug";
+import { normalizeTranslatedSlug } from "../i18n/translatedSlug";
 import { uniquePerSite } from "../utils/uniquePerSite";
 
 // Must stay public: anonymous site visitors trigger the frontend's
@@ -67,7 +67,8 @@ export const Redirects: CollectionConfig = {
       name: "fromPath",
       type: "text",
       required: true,
-      hooks: { beforeValidate: [({ value }) => (typeof value === "string" ? normalizeSlug(value) : value)] },
+      // Letters of any script are kept, since a redirect can be from an address in Arabic or French ("fr/à-propos").
+      hooks: { beforeValidate: [({ value }) => (typeof value === "string" ? (value.trim() === "/" ? "/" : normalizeTranslatedSlug(value)) : value)] },
       validate: uniquePerSite("redirects", "fromPath"),
       admin: {
         description: "URL path to redirect FROM, e.g. about-old (no leading/trailing slash).",

@@ -164,6 +164,10 @@ html:not([data-polysite-multilingual]) {
   .field-label .localized {
     display: none;
   }
+  // A page's address in another language (translatedSlug) means nothing with one language.
+  #field-translatedSlug {
+    display: none;
+  }
 }
 
 // The admin's two brand typefaces, served from this site (public/fonts, SIL Open Font License; the licence text sits beside the

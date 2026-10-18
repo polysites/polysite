@@ -4,12 +4,14 @@
 import { defineSitemapEventHandler } from "#imports";
 
 import type { PayloadSite } from "../../../types/payload";
-import { languagesOf, withLanguage } from "../../../utils/language";
+import { addressInLanguage, languagesOf } from "../../../utils/language";
 
 interface SiteUrlDoc {
   path?: string | null;
   /** The languages this address has text in (the CMS keeps it up to date). */
   languages?: string[] | null;
+  /** The address in each language (read with locale=all); a language without an address of its own has the shared one. */
+  localizedPath?: Record<string, string | null> | string | null;
   updatedAt?: string | null;
   /** The document this address belongs to. Empty when that document has since been removed. */
   doc?: { value?: unknown } | null;
@@ -42,6 +44,10 @@ export default defineSitemapEventHandler(async (event) => {
         limit: PAGE_SIZE,
         page,
         sort: "path",
+        // Every language's own address, in one answer; only the fields the sitemap uses.
+        ...(setup.languages.length > 1
+          ? { locale: "all", "select[path]": true, "select[localizedPath]": true, "select[languages]": true, "select[updatedAt]": true, "select[doc]": true }
+          : {}),
       },
     }).catch(() => null);
     for (const doc of res?.docs ?? []) {
@@ -57,10 +63,10 @@ export default defineSitemapEventHandler(async (event) => {
       // The default language always has the address; another language only when it has been translated.
       const have = setup.languages.filter((code) => code === setup.default || (doc.languages ?? []).includes(code));
       const alternatives = [
-        ...have.map((code) => ({ hreflang: code, href: `${origin}${withLanguage(path, code, setup)}` })),
-        { hreflang: "x-default", href: `${origin}${withLanguage(path, setup.default, setup)}` },
+        ...have.map((code) => ({ hreflang: code, href: `${origin}${addressInLanguage(path, doc.localizedPath, code, setup)}` })),
+        { hreflang: "x-default", href: `${origin}${addressInLanguage(path, doc.localizedPath, setup.default, setup)}` },
       ];
-      for (const code of have) urls.push({ loc: withLanguage(path, code, setup), alternatives, ...lastmod });
+      for (const code of have) urls.push({ loc: addressInLanguage(path, doc.localizedPath, code, setup), alternatives, ...lastmod });
     }
     if (!res?.hasNextPage) break;
   }

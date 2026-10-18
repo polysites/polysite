@@ -40,6 +40,7 @@ Things outside Polysite's own data that you should account for:
   says how to change that. The webhooks plugin sends only ids, titles and links (never what a visitor typed
   into a form) to the addresses an administrator adds, and keeps a delivery log for 30 days. Check what each
   plugin you install keeps.
+- **Machine translation (off unless you switch it on).** If a site turns on the languages plugin's translation helper and the server has a provider set up, pressing **Translate** sends the text of that one page or post to that provider (Anthropic for `claude`, or the server named in `POLYSITE_TRANSLATE_URL`; a self-hosted LibreTranslate keeps it on your own machine). Nothing else is sent: no form answers, no visitor or user data, and nothing happens unless a signed-in editor presses the button. Say so in your own privacy notice if you use it, and check the provider's own terms. The key is kept in the server's environment, not in the database.
 - **Email.** If a form sends notification emails, those copies live in mailboxes Polysite
   doesn't control.
 

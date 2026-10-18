@@ -9,3 +9,6 @@ services:
       # The suite signs in far more often than a person would, all from one address through the proxy: lift the per-address limits for it only.
       POLYSITE_LOGIN_RATE_LIMIT: "100000"
       POLYSITE_RESET_RATE_LIMIT: "100000"
+      # The machine-translation helper's check runs against the "echo" provider (it marks text instead of translating it; never set on a real install).
+      POLYSITE_TRANSLATE_PROVIDER: echo
+      POLYSITE_TRANSLATE_ALLOW_ECHO: "1"

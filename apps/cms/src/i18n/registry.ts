@@ -86,3 +86,10 @@ export function translatedLanguages(title: unknown): string[] {
     .filter(([, value]) => typeof value === "string" && value.trim().length > 0)
     .map(([code]) => code);
 }
+
+/** The languages a site has set to preview only (`extensions.languages.previewLanguages`): editors write them, visitors cannot reach them. Never the default. */
+export function previewLanguagesOf(setting: unknown): string[] {
+  const raw = (setting as { previewLanguages?: unknown } | null | undefined)?.previewLanguages;
+  const [def, ...rest] = offeredBy(setting);
+  return Array.isArray(raw) ? raw.filter((c): c is string => typeof c === "string" && c !== def && rest.includes(c)) : [];
+}

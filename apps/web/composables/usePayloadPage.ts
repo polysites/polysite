@@ -41,17 +41,30 @@ export async function usePayloadPage(slug: string) {
   // refetching, and the second page 404s. Caught for real: navigating
   // in-app from the homepage to another page kept resolving to whatever
   // page loaded first.
+  // In a language other than the site's default, a page can have its own address (translatedSlug, /fr/a-propos), so the lookup asks for
+  // both: the page whose address in this language is the one asked for, and the page whose shared address it is (the old address,
+  // which then redirects to the translated one). The default language never looks at translated addresses.
+  const translatedLookup = lang.code.value !== lang.defaultCode.value;
   const { data: page } = await useFetch(`${base}/pages`, {
     key: `payload-page-${lang.code.value}-${slug}`,
     query: {
-      "where[and][0][slug][equals]": slug,
+      ...(translatedLookup
+        ? { "where[and][0][or][0][translatedSlug][equals]": slug, "where[and][0][or][1][slug][equals]": slug }
+        : { "where[and][0][slug][equals]": slug }),
       "where[and][1][site.domain][equals]": hostname,
       depth: 1,
-      limit: 1,
+      limit: translatedLookup ? 2 : 1,
       ...lang.query(),
     },
-    transform: (res: { docs?: PayloadPage[] }) => res?.docs?.[0] ?? null,
+    transform: (res: { docs?: PayloadPage[] }) => pickPage(res?.docs ?? [], slug, translatedLookup),
   });
+
+  // Found by the shared address, but the page has its own address in this language: send visitors (and search engines) there.
+  const ownAddress = translatedLookup ? page.value?.translatedSlug : null;
+  if (page.value && ownAddress && ownAddress !== slug) {
+    await nuxtApp.runWithContext(() => navigateTo(lang.localePath(pageHref(ownAddress)), { redirectCode: 301 }));
+    return page;
+  }
 
   if (!page.value) {
     // Every composable call from here on is wrapped in runWithContext (see
@@ -69,20 +82,23 @@ export async function usePayloadPage(slug: string) {
     const { data: redirect } = redirectsEnabled
       ? await nuxtApp.runWithContext(() =>
           useFetch(`${base}/redirects`, {
-            key: `payload-redirect-${slug}`,
+            key: `payload-redirect-${lang.code.value}-${slug}`,
             query: {
-              "where[and][0][fromPath][equals]": slug,
+              // In another language, an address that changed there is recorded as "<language>/<address>".
+              ...(translatedLookup
+                ? { "where[and][0][fromPath][in]": `${lang.code.value}/${slug},${slug}`, ...lang.query() }
+                : { "where[and][0][fromPath][equals]": slug }),
               "where[and][1][site.domain][equals]": hostname,
               "where[and][2][enabled][equals]": true,
               depth: 2,
-              limit: 1,
+              limit: translatedLookup ? 2 : 1,
             },
-            transform: (res: { docs?: PayloadRedirect[] }) => res?.docs?.[0] ?? null,
+            transform: (res: { docs?: PayloadRedirect[] }) => pickRedirect(res?.docs ?? [], `${lang.code.value}/${slug}`),
           }),
         )
       : { data: { value: null } };
 
-    const target = resolveRedirectTarget(redirect.value);
+    const target = resolveRedirectTarget(redirect.value, translatedLookup);
     if (target) {
       // navigateTo performs the real redirect here (a server-side
       // sendRedirect during SSR, a router navigation client-side) -- Vue's
@@ -103,6 +119,17 @@ export async function usePayloadPage(slug: string) {
   return page;
 }
 
+// The page a lookup found: the one with this address in the language asked for, else the one whose shared address it is.
+export function pickPage(docs: PayloadPage[], slug: string, translatedLookup: boolean): PayloadPage | null {
+  if (!translatedLookup) return docs[0] ?? null;
+  return docs.find((d) => d.translatedSlug === slug) ?? docs.find((d) => d.slug === slug) ?? null;
+}
+
+// A redirect for the exact address in this language wins over one for the plain address.
+export function pickRedirect(docs: PayloadRedirect[], languageAddress: string): PayloadRedirect | null {
+  return docs.find((d) => d.fromPath === languageAddress) ?? docs[0] ?? null;
+}
+
 // "/" is the homepage's own slug (see pages/index.vue) -- same special-case
 // the Live Preview URL builder in payload.config.ts already uses.
 export function pageHref(slug: string): string {
@@ -116,6 +143,8 @@ export function pageHref(slug: string): string {
 // usePayloadPage.test.ts) -- not used by any other caller.
 export function resolveRedirectTarget(
   redirect: PayloadRedirect | null | undefined,
+  // In a language other than the default, a page that has its own address there is redirected to that one.
+  translated = false,
 ): { href: string; statusCode: number; external: boolean } | null {
   if (!redirect) return null;
   const statusCode = Number(redirect.statusCode) || 301;
@@ -128,7 +157,7 @@ export function resolveRedirectTarget(
   if (!target || typeof target.value !== "object") return null;
 
   if (target.relationTo === "pages") {
-    const targetSlug = target.value.slug;
+    const targetSlug = (translated && target.value.translatedSlug) || target.value.slug;
     return targetSlug ? { href: pageHref(targetSlug), statusCode, external: false } : null;
   }
 

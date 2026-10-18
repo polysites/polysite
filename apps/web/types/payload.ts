@@ -20,6 +20,8 @@ export interface PayloadPage {
   id?: string;
   title?: string;
   slug?: string;
+  /** The page's own address in the language it was read in (empty: it uses `slug`). */
+  translatedSlug?: string | null;
   content?: PayloadBlock[];
   meta?: {
     title?: string;
@@ -63,7 +65,7 @@ export interface PayloadSite {
   // a plugin's web layer reads its own key with its own type. The core reads one of them: `languages`, the site's language
   // choice (utils/language.ts); a site without it offers English only.
   extensions?: {
-    languages?: { languages?: string[] | null; defaultLanguage?: string | null } | null;
+    languages?: { languages?: string[] | null; defaultLanguage?: string | null; previewLanguages?: string[] | null } | null;
     [key: string]: unknown;
   };
   // Plugins may still add fields of their own to a site; the plugin's web layer reads them with its own type.
@@ -74,12 +76,14 @@ export interface PayloadRedirectTarget {
   relationTo?: "pages" | "media" | "forms";
   value?: {
     slug?: string;
+    translatedSlug?: string | null;
     url?: string;
     landingPage?: { slug?: string } | string | null;
   };
 }
 
 export interface PayloadRedirect {
+  fromPath?: string;
   redirectType?: "internal" | "external";
   toUrl?: string;
   statusCode?: number;

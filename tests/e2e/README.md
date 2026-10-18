@@ -8,6 +8,7 @@ Scripts that drive a RUNNING Polysite through the API and the public site and sa
 | `security.e2e.mjs` | the access rules the security review found: another site's drafts, the URL index, page versions, unlock, review fields, upload size | the core |
 | `i18n.e2e.mjs` | translatable content, fallback, `locale=all`, drafts and versions across languages | the core |
 | `multilang.e2e.mjs` | a site in two languages: addresses, `hreflang`, switcher, `noindex`, sitemap, news, required fields | the core and the i18n plugin |
+| `multilang-extras.e2e.mjs` | preview-only languages (signed preview link), a page's own address per language (redirects, hreflang, switcher, sitemap), the machine-translation helper (needs `POLYSITE_TRANSLATE_PROVIDER=echo`) | the core and the i18n plugin |
 | `plugins/auth/test/e2e/*.e2e.mjs` | two-factor sign-in, single sign-on (with the mock identity provider in the same folder) | the core and the auth plugin |
 | `plugins/search/test/e2e/search.e2e.mjs` | visitor search: no drafts or other sites' pages leak, languages, paging, rate limit, results page | the core and the search plugin |
 | `plugins/share/test/e2e/share.e2e.mjs` | share buttons: settings, exact links in the rendered page, per-site and per-content-type gating, French | the core and the share plugin |

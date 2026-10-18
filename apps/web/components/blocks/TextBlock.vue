@@ -25,10 +25,10 @@ defineProps<{
 .poly-prose :deep(h2), .poly-prose :deep(h3), .poly-prose :deep(h4) { margin: 1.5rem 0 0.5rem; font-weight: 700; color: #171717; line-height: 1.3; }
 .poly-prose :deep(h2) { font-size: 1.5rem; }
 .poly-prose :deep(h3) { font-size: 1.25rem; }
-.poly-prose :deep(ul), .poly-prose :deep(ol) { margin: 0 0 1rem; padding-left: 1.5rem; }
+.poly-prose :deep(ul), .poly-prose :deep(ol) { margin: 0 0 1rem; padding-inline-start: 1.5rem; }
 .poly-prose :deep(ul) { list-style: disc; }
 .poly-prose :deep(ol) { list-style: decimal; }
 .poly-prose :deep(a) { color: var(--brand-primary); text-decoration: underline; }
-.poly-prose :deep(blockquote) { margin: 1rem 0; padding-left: 1rem; border-left: 3px solid #d4d4d4; color: #525252; font-style: italic; }
+.poly-prose :deep(blockquote) { margin: 1rem 0; padding-inline-start: 1rem; border-inline-start: 3px solid #d4d4d4; color: #525252; font-style: italic; }
 .poly-prose :deep(img) { max-width: 100%; height: auto; border-radius: 0.5rem; }
 </style>

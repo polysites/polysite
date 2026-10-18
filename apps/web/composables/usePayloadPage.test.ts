@@ -1,6 +1,39 @@
 import { describe, expect, it } from "vitest";
 
-import { pageHref, resolveRedirectTarget } from "./usePayloadPage";
+import { pageHref, pickPage, pickRedirect, resolveRedirectTarget } from "./usePayloadPage";
+
+describe("finding a page by its address in a language", () => {
+  const about = { slug: "about", translatedSlug: "a-propos" };
+  const other = { slug: "a-propos-de", translatedSlug: null };
+
+  it("takes the first result in the default language, where translated addresses are not used", () => {
+    expect(pickPage([about], "about", false)).toBe(about);
+    expect(pickPage([], "about", false)).toBeNull();
+  });
+
+  it("prefers the page whose address in this language it is, then the page with that shared address", () => {
+    expect(pickPage([other, about], "a-propos", true)).toBe(about);
+    expect(pickPage([about], "about", true)).toBe(about);
+    expect(pickPage([other], "a-propos-de", true)).toBe(other);
+    expect(pickPage([about], "nothing", true)).toBeNull();
+  });
+
+  it("prefers a redirect for the exact address in the language", () => {
+    const plain = { fromPath: "old" } as never;
+    const french = { fromPath: "fr/old" } as never;
+    expect(pickRedirect([plain, french], "fr/old")).toBe(french);
+    expect(pickRedirect([plain], "fr/old")).toBe(plain);
+    expect(pickRedirect([], "fr/old")).toBeNull();
+  });
+
+  it("sends a redirect to the page's own address in another language", () => {
+    const redirect = { redirectType: "internal", toTarget: { relationTo: "pages", value: { slug: "about", translatedSlug: "a-propos" } } } as never;
+    expect(resolveRedirectTarget(redirect, true)?.href).toBe("/a-propos");
+    expect(resolveRedirectTarget(redirect, false)?.href).toBe("/about");
+    const none = { redirectType: "internal", toTarget: { relationTo: "pages", value: { slug: "about", translatedSlug: null } } } as never;
+    expect(resolveRedirectTarget(none, true)?.href).toBe("/about");
+  });
+});
 
 describe("pageHref", () => {
   it("preserves the homepage sentinel slug", () => {

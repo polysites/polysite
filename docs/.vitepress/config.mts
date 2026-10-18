@@ -57,6 +57,7 @@ export default defineConfig({
     siteTitle: false,
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
+      { text: "API", link: "/guide/api" },
       { text: "Architecture", link: "/architecture" },
       { text: "Plugins", link: "/guide/plugins" },
       { text: "Themes", link: "/guide/themes" },
@@ -106,6 +107,7 @@ export default defineConfig({
       {
         text: "Reference",
         items: [
+          { text: "API reference", link: "/guide/api" },
           { text: "Architecture", link: "/architecture" },
           { text: "Brand guide", link: "/brand" },
         ],

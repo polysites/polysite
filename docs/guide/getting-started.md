@@ -149,8 +149,9 @@ behind Caddy with a managed PostgreSQL database.
 
 Before a server is reachable from the internet, read [Configuration](/guide/configuration) and
 [Securing an install](/guide/security). A command-line tool (`polysite`, also `polysites` and
-`poly`) that wraps install, backup and upgrade is in preview in its own repository; it is not
-released yet, so use the steps on this page for now.
+`poly`) that wraps install, backup and upgrade is an early preview in its own repository
+(`npm install --global @polysite/cli`). It has not yet been run on a production server with a real
+domain, so use the steps on this page for production and try the tool on a throwaway server first.
 
 Next: [what Polysite does](/guide/features), or the [architecture](/architecture)
 for how the pieces fit.

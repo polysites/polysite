@@ -79,7 +79,7 @@ const { siteName, tagline, showDonateButton, brandVars, navItems, footerColumns,
       </div>
       <p class="mx-auto mt-8 max-w-5xl text-xs text-neutral-400">
         &copy; {{ new Date().getFullYear() }} {{ siteName }}
-        <TrackingSettingsLink class="ml-3" />
+        <TrackingSettingsLink class="ms-3" />
       </p>
     </footer>
   </div>

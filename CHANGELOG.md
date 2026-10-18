@@ -13,6 +13,21 @@ it stood on that day, so the first entry below is written from the product's doc
 
 ## [Unreleased]
 
+### Added
+
+- **Translated page addresses.** A page can have its own address in each language (`/fr/a-propos`, `/ar/من-نحن`); the shared address keeps working and sends visitors on to it, and the switcher, search-engine links and sitemap use each language's own address.
+- **Language live / preview only** (languages plugin). A site can write and check a language before visitors can reach it; editors see it through a signed, temporary link.
+- **Machine-translation helper** (languages plugin, off by default). A Translate button saves a draft that must be reviewed before it can be published. The provider and its key are set in the server's environment (`POLYSITE_TRANSLATE_*`); only the text of the one page is sent.
+
+### Fixed
+
+- **Right-to-left languages.** Pages in Arabic, Hebrew and the other right-to-left languages now turn around fully: the core, the starter theme, the ten example themes and the plugins' pages use logical CSS, and directional arrows are mirrored.
+- Live Preview and the page preview link now open the language being edited (they always opened the default language).
+
+### Upgrade notes
+
+- One core migration (`translated_addresses`) adds nullable columns for translated addresses and the index; it deletes nothing. Plugins' migrations are rebased onto it.
+
 ## [0.1.0-beta.4] - 2026-10-14
 
 ### Fixed
