@@ -79,6 +79,7 @@ export default defineConfig({
           { text: "Search", link: "/guide/search" },
           { text: "Share buttons", link: "/guide/share-buttons" },
           { text: "Forms and sign-ups", link: "/guide/forms" },
+          { text: "Events and tickets", link: "/guide/events" },
           { text: "Privacy and consent", link: "/guide/privacy" },
           { text: "Status and roadmap", link: "/guide/status" },
         ],

@@ -8,6 +8,7 @@ Scripts that drive a RUNNING Polysite through the API and the public site and sa
 | `security.e2e.mjs` | the access rules the security review found: another site's drafts, the URL index, page versions, unlock, review fields, upload size | the core |
 | `i18n.e2e.mjs` | translatable content, fallback, `locale=all`, drafts and versions across languages | the core |
 | `multilang.e2e.mjs` | a site in two languages: addresses, `hreflang`, switcher, `noindex`, sitemap, news, required fields | the core and the i18n plugin |
+| *(plugin)* `events/test/e2e/events.e2e.mjs` | events and RSVPs: capacity counted exactly (twenty at once for five places), the waiting list, cancel links, the calendar file, the CSV, staff-only parts | the events plugin |
 | `multilang-extras.e2e.mjs` | preview-only languages (signed preview link), a page's own address per language (redirects, hreflang, switcher, sitemap), the machine-translation helper (needs `POLYSITE_TRANSLATE_PROVIDER=echo`) | the core and the i18n plugin |
 | `plugins/auth/test/e2e/*.e2e.mjs` | two-factor sign-in, single sign-on (with the mock identity provider in the same folder) | the core and the auth plugin |
 | `plugins/search/test/e2e/search.e2e.mjs` | visitor search: no drafts or other sites' pages leak, languages, paging, rate limit, results page | the core and the search plugin |
@@ -28,6 +29,10 @@ Scripts that drive a RUNNING Polysite through the API and the public site and sa
   ```bash
   PLUGINS_DIR=../polysite-plugins sh tests/e2e/run-with-plugins.sh
   ```
+
+  A plugin that lives outside that folder (a private one) can add its own mock service, environment and checks without the script
+  knowing about it: `E2E_COMPOSE_EXTRA` (one more Compose file for the stack) and `E2E_EXTRA_SCRIPT` (a shell file defining
+  `extra_setup`, `extra_checks` and `extra_cleanup`). The comment at the top of the script says what they can use.
 
   In CI this is the `e2e-plugins` job. The core never depends on the plugins repository, so the job runs only when it can read it:
   create a key pair (`ssh-keygen -t ed25519 -f plugins-deploy -N ""`), add `plugins-deploy.pub` to **polysite-plugins → Settings →

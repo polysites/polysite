@@ -12,3 +12,7 @@ services:
       # The machine-translation helper's check runs against the "echo" provider (it marks text instead of translating it; never set on a real install).
       POLYSITE_TRANSLATE_PROVIDER: echo
       POLYSITE_TRANSLATE_ALLOW_ECHO: "1"
+      # Unpaid ticket places are held for eight seconds instead of twenty minutes, and the sweep runs every two seconds, so the check can watch a hold run out.
+      EVENTS_HOLD_SECONDS: "8"
+      EVENTS_SWEEP_MS: "2000"
+      EVENTS_RETRY_MS: "3000"

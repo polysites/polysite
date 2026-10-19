@@ -73,6 +73,13 @@ hidden trap field, a signed token and a rate limit, and only the site's own team
 read them. A form can also count as a petition: one signature per email address, and a public signature count
 with an optional goal. See [Forms and sign-ups](/guide/forms).
 
+### Events and tickets
+
+Events with a page each, an RSVP form with a capacity and a waiting list, a calendar file, confirmation and reminder emails, and an
+attendee list for staff. An event can sell tickets instead: prices are worked out on the server, the visitor pays on the payment
+provider's own page (a card number never reaches the site), and places are confirmed only when the provider's records show the
+payment. See [Events and tickets](/guide/events).
+
 ### Themes and branding
 
 Each site picks a theme at runtime. Logo, colors, fonts, navigation, footer and
@@ -82,7 +89,7 @@ social links are edited per site. See [themes](/guide/themes).
 
 Optional capabilities live outside the core and are added by dropping in a folder: news and articles, email,
 analytics, notifications, sign-in security (single sign-on, two-factor, API keys), several languages per site,
-visitor search, share buttons, signed webhooks, a WordPress importer, AI agents over MCP, an AI writing assistant and a setup checklist. Each keeps its data in its own tables, and
+visitor search, share buttons, signed webhooks, a WordPress importer, AI agents over MCP, an AI writing assistant, a setup checklist, and events with RSVP and tickets. Each keeps its data in its own tables, and
 removing or switching one off never deletes what its users created. Polysite runs without any. See
 [plugins](/guide/plugins).
 

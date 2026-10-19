@@ -26,6 +26,7 @@ it doesn't do. The core's guides don't repeat them.
 | `webhooks` | global | Signed JSON messages to other systems when pages, posts, forms or media change, with retries, a delivery log and replay. Super Admins only |
 | `ai-assist` | global | Suggestions inside the admin: rewrite text, search title and description, alt text, translation, a draft page from a brief. Off until a Super Admin switches it on; nothing publishes |
 | `mcp` | global | Lets AI agents such as Claude work on the install over MCP: build pages and forms, upload images. A key acts as the person it belongs to, so that person's role decides what the agent can do |
+| `events` | per-site | Events with a free RSVP, a waiting list and optional paid tickets: a page per event, a capacity that is counted exactly, a calendar file, confirmation and reminder emails, an attendee list for staff. See [Events and tickets](/guide/events) |
 | `onboarding` | global | A "Get your site ready" checklist on the admin dashboard: logo, menu, first page, form, domain, editor, backups. Ticks itself where it can, dismissible, remembered per site |
 | `wordpress-import` | global | Imports a WordPress export file (pages, posts, images, menu, redirects) into one site, with a dry run first |
 
