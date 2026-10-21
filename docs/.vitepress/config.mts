@@ -8,6 +8,18 @@ const base = process.env.DOCS_BASE ?? "/polysite/";
 const siteUrl = "https://polysites.github.io/polysite/";
 const siteDescription = "One cockpit for every site you run: a multisite, static-first CMS.";
 
+// Google Analytics for the published docs only. Local previews set DOCS_BASE, so they are not counted.
+const gaId = "G-XXBECC91SR";
+const analytics: [string, Record<string, string>, string?][] = process.env.DOCS_BASE
+  ? []
+  : [
+      ["script", { async: "", src: `https://www.googletagmanager.com/gtag/js?id=${gaId}` }],
+      ["script", {}, `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag("js", new Date());
+gtag("config", "${gaId}");`],
+    ];
+
 export default defineConfig({
   title: "Polysite",
   description: siteDescription,
@@ -17,6 +29,7 @@ export default defineConfig({
   lastUpdated: true,
   head: [
     ["link", { rel: "icon", href: `${base}favicon.svg`, type: "image/svg+xml" }],
+    ...analytics,
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:site_name", content: "Polysite" }],
     ["meta", { property: "og:locale", content: "en_US" }],
