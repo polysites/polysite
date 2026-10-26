@@ -22,7 +22,7 @@
     "@nuxt/scripts": "1.3.9",
     "@nuxt/ui": "4.11.2",
     "@nuxtjs/partytown": "2.0.0",
-    "@nuxtjs/seo": "5.3.16",
+    "@nuxtjs/seo": "6.0.1",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.81.2",
     "@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
